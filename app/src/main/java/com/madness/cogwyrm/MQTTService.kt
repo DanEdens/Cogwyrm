@@ -1,4 +1,4 @@
-package com.madness.mqttcommander
+package com.madness.cogwyrm
 
 import android.app.Service
 import android.content.Intent

@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MQTT Commander"
+rootProject.name = "Cogwyrm"
 include ':app' 

@@ -4,15 +4,15 @@ plugins {
 }
 
 android {
-    namespace 'com.madness.mqttcommander'
+    namespace 'com.madness.cogwyrm'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.madness.mqttcommander"
+        applicationId "com.madness.cogwyrm"
         minSdk 24
         targetSdk 34
         versionCode 1
-        versionName "0.1.0-CHAOS"
+        versionName "0.1.0-WYRM"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

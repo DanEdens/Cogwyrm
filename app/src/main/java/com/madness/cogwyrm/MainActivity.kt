@@ -1,4 +1,4 @@
-package com.madness.mqttcommander
+package com.madness.cogwyrm
 
 import android.os.Bundle
 import android.view.Menu

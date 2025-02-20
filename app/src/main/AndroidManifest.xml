@@ -24,7 +24,7 @@
         </activity>
 
         <!-- MQTT Service -->
-        <service android:name=".mqtt.MQTTService" />
+        <service android:name=".MQTTService" />
 
         <!-- Tasker Plugin Configuration -->
         <activity
