@@ -1,1 +1,18 @@
- 
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MQTT Commander</string>
+    
+    <!-- Configuration Activity -->
+    <string name="config_title">Configure MQTT Ritual</string>
+    <string name="topic_hint">Topic Path (e.g., /swarm/commands)</string>
+    <string name="message_hint">Message Content</string>
+    <string name="qos_hint">Quality of Service</string>
+    <string name="retain_label">Retain Message in the Void</string>
+    
+    <!-- QoS Levels -->
+    <string-array name="qos_levels">
+        <item>QoS 0 - At most once</item>
+        <item>QoS 1 - At least once</item>
+        <item>QoS 2 - Exactly once</item>
+    </string-array>
+</resources> 

@@ -1,30 +1,27 @@
 package com.madness.mqttcommander.tasker
 
 import android.content.Context
-import com.joaomgcd.taskerpluginlibrary.action.TaskerPluginRunnerActionNoOutput
-import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigNoOutput
-import com.joaomgcd.taskerpluginlibrary.extensions.requestQuery
+import com.joaomgcd.taskerpluginlibrary.action.TaskerPluginRunnerAction
+import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
+import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultError
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSucess
+import com.madness.mqttcommander.MQTTService
 
-class MQTTActionReceiver : TaskerPluginConfigNoOutput<MQTTActionInput, MQTTActionRunner>() {
-    override val context: Context
-        get() = applicationContext
-
-    override fun run(input: TaskerInput<MQTTActionInput>): TaskerPluginResult<Unit> {
+class MQTTActionReceiver : TaskerPluginRunnerAction<MQTTActionInput, Unit>() {
+    override fun run(context: Context, input: TaskerInput<MQTTActionInput>): TaskerPluginResult<Unit> {
         return try {
-            // Attempt to summon the message into the void
-            input.regular.let { config ->
-                MQTTService.getInstance(context).publish(
-                    config.topic,
-                    config.message,
-                    config.qos,
-                    config.retain
-                )
-            }
+            val service = MQTTService()
+            service.connect(
+                input.regular.brokerUrl,
+                input.regular.port,
+                input.regular.clientId,
+                input.regular.useSSL
+            )
+            service.publish(input.regular.topic, input.regular.message)
             TaskerPluginResultSucess()
         } catch (e: Exception) {
-            TaskerPluginResultError(e.message ?: "THE VOID REJECTED OUR OFFERING")
+            TaskerPluginResultError(e)
         }
     }
 }
