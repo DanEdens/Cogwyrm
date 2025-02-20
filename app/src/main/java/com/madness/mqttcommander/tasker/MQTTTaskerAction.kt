@@ -7,7 +7,7 @@ import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultError
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSucess
-import com.madness.mqttcommander.mqtt.MQTTService
+import com.madness.mqttcommander.MQTTService
 
 // Input configuration for our DARK RITUAL
 data class MQTTActionInput(
@@ -42,5 +42,9 @@ class MQTTActionRunner(private val context: Context) {
 class MQTTActionHelper(config: TaskerPluginConfig<MQTTActionInput>) : TaskerPluginConfigHelper<MQTTActionInput, MQTTActionRunner, Unit>(config) {
     override val inputClass = MQTTActionInput::class.java
     override val runnerClass = MQTTActionRunner::class.java
-    override fun isInputValid(input: TaskerInput<MQTTActionInput>) = input.regular.brokerUrl.isNotEmpty() && input.regular.topic.isNotEmpty()
+    override val outputClass = Unit::class.java
+
+    override fun isInputValid(input: TaskerInput<MQTTActionInput>) =
+        input.regular.brokerUrl.isNotEmpty() &&
+        input.regular.topic.isNotEmpty()
 }

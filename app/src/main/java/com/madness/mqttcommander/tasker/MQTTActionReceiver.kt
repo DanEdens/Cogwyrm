@@ -9,6 +9,8 @@ import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSucess
 import com.madness.mqttcommander.MQTTService
 
 class MQTTActionReceiver : TaskerPluginRunnerAction<MQTTActionInput, Unit>() {
+    override val notificationProperties get() = NotificationProperties()
+
     override fun run(context: Context, input: TaskerInput<MQTTActionInput>): TaskerPluginResult<Unit> {
         return try {
             val service = MQTTService()
