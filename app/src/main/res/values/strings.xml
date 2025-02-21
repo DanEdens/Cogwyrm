@@ -1,24 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Cogwyrm</string>
-    
-    <!-- Configuration Activity -->
-    <string name="config_title">Configure Cogwyrm Ritual</string>
-    <string name="topic_hint">Topic Path (e.g., /wyrm/commands)</string>
-    <string name="message_hint">Message Content</string>
-    <string name="qos_hint">Quality of Service</string>
-    <string name="retain_label">Retain Message in the Void</string>
-    
-    <!-- Tasker Plugin -->
-    <string name="tasker_plugin_name">Cogwyrm</string>
-    <string name="tasker_plugin_description">Send MQTT messages through the Cogwyrm</string>
-    <string name="tasker_notification_title">Cogwyrm Message Sent</string>
-    <string name="tasker_notification_text">Message channeled through %1$s</string>
-    
-    <!-- QoS Levels -->
-    <string-array name="qos_levels">
-        <item>QoS 0 - At most once</item>
-        <item>QoS 1 - At least once</item>
-        <item>QoS 2 - Exactly once</item>
-    </string-array>
+    <string name="config_title">Cogwyrm MQTT Configuration</string>
 </resources> 
