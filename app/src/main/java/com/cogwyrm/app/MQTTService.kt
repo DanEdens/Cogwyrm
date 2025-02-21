@@ -7,13 +7,13 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.cogwyrm.app.mqtt.MQTTClient
 import org.eclipse.paho.client.mqttv3.*
-import org.eclipse.paho.android.service.MqttAndroidClient
 import java.util.*
 
 class MQTTService : Service() {
     private val binder = LocalBinder()
-    private var mqttClient: MqttAndroidClient? = null
+    private var mqttClient: MQTTClient? = null
     private var _isConnected = false
     private val messageHistory = mutableListOf<MessageRecord>()
     private var notificationManager: NotificationManager? = null
@@ -57,43 +57,25 @@ class MQTTService : Service() {
 
     fun isConnected(): Boolean = _isConnected
 
-    fun connect(serverUri: String, port: Int, username: String? = null, password: String? = null) {
-        val generatedClientId = "CogwyrmMQTT-" + UUID.randomUUID().toString()
-        val fullServerUri = "tcp://$serverUri:$port"
+    fun connect(serverUri: String, port: Int, clientId: String?, password: String? = null) {
+        val generatedClientId = clientId ?: "CogwyrmMQTT-${UUID.randomUUID()}"
 
-        mqttClient = MqttAndroidClient(applicationContext, fullServerUri, generatedClientId).apply {
-            setCallback(object : MqttCallback {
-                override fun connectionLost(cause: Throwable?) {
-                    Log.e(TAG, "Connection lost: ${cause?.message}")
-                    _isConnected = false
-                    showNotification("Connection Lost", "MQTT connection was lost")
-                }
-
-                override fun messageArrived(topic: String?, message: MqttMessage?) {
-                    message?.let {
-                        val messageStr = String(it.payload)
-                        Log.d(TAG, "Message received: $messageStr on topic: $topic")
-                        messageHistory.add(MessageRecord(topic ?: "", messageStr))
-                        showNotification("Message Received", "New message on topic: $topic")
-                    }
-                }
-
-                override fun deliveryComplete(token: IMqttDeliveryToken?) {
-                    Log.d(TAG, "Message delivered")
-                }
-            })
-        }
-
-        val options = MqttConnectOptions().apply {
-            isCleanSession = true
-            if (username != null && password != null) {
-                this.userName = username
-                this.password = password.toCharArray()
+        mqttClient = MQTTClient(
+            context = applicationContext,
+            brokerUrl = serverUri,
+            port = port.toString(),
+            clientId = generatedClientId,
+            useSsl = false,
+            onConnectionLost = { cause ->
+                _isConnected = false
+                showNotification("Connection Lost", "MQTT connection was lost: ${cause?.message}")
+            },
+            onMessageArrived = { topic, message ->
+                messageHistory.add(MessageRecord(topic, message))
+                showNotification("Message Received", "New message on topic: $topic")
             }
-        }
-
-        try {
-            mqttClient?.connect(options, null, object : IMqttActionListener {
+        ).apply {
+            connect(object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     Log.d(TAG, "Connection success")
                     _isConnected = true
@@ -103,11 +85,9 @@ class MQTTService : Service() {
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                     Log.e(TAG, "Connection failure: ${exception?.message}")
                     _isConnected = false
-                    showNotification("Connection Failed", "Failed to connect to MQTT broker")
+                    showNotification("Connection Failed", "Failed to connect to MQTT broker: ${exception?.message}")
                 }
             })
-        } catch (e: MqttException) {
-            e.printStackTrace()
         }
     }
 
@@ -122,18 +102,21 @@ class MQTTService : Service() {
 
     fun publish(topic: String, message: String) {
         try {
-            mqttClient?.publish(topic, MqttMessage(message.toByteArray()))
+            mqttClient?.publish(topic, message)
             messageHistory.add(MessageRecord(topic, message, isIncoming = false))
         } catch (e: MqttException) {
             e.printStackTrace()
+            showNotification("Publish Failed", "Failed to publish message: ${e.message}")
         }
     }
 
     fun subscribe(topic: String) {
         try {
-            mqttClient?.subscribe(topic, 1)
+            mqttClient?.subscribe(topic)
+            showNotification("Subscribed", "Successfully subscribed to topic: $topic")
         } catch (e: MqttException) {
             e.printStackTrace()
+            showNotification("Subscribe Failed", "Failed to subscribe to topic: ${e.message}")
         }
     }
 

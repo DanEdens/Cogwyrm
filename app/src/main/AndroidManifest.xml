@@ -26,6 +26,20 @@
         <!-- MQTT Service -->
         <service android:name=".MQTTService" />
 
+        <!-- Paho MQTT Service -->
+        <service android:name="org.eclipse.paho.android.service.MqttService" />
+
+        <!-- Paho MQTT Ping Receiver -->
+        <receiver
+            android:name="org.eclipse.paho.android.service.AlarmPingSender"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="org.eclipse.paho.android.service.MqttService.PING_SENDER" />
+                <action android:name="${applicationId}.org.eclipse.paho.android.service.MqttService.PING_SENDER" />
+                <action android:name="MqttServiceMqttService.pingSender.CogwyrmMQTT" />
+            </intent-filter>
+        </receiver>
+
         <!-- Tasker Plugin Configuration -->
         <activity
             android:name=".tasker.MQTTConfigActivity"
