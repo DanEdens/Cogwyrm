@@ -2,4 +2,6 @@
 <resources>
     <string name="app_name">Cogwyrm</string>
     <string name="config_title">Cogwyrm MQTT Configuration</string>
-</resources> 
+    <string name="tasker_notification_title">MQTT Action</string>
+    <string name="tasker_notification_text">Publishing message to MQTT broker</string>
+</resources>

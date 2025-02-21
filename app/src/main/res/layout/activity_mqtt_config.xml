@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/brokerUrlInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Broker URL"
+            android:inputType="textUri" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/portInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Port"
+            android:inputType="number" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/clientIdInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Client ID (optional)"
+            android:inputType="text" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/topicInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Topic"
+            android:inputType="text" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/messageInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Message"
+            android:inputType="textMultiLine"
+            android:minLines="3" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/useSslCheckbox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:text="Use SSL" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/saveButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save" />
+
+</LinearLayout> 
