@@ -113,9 +113,9 @@ class MainActivity : AppCompatActivity() {
                     val url = brokerUrlInput.text.toString()
                     val port = brokerPortInput.text.toString().toIntOrNull() ?: 1883
                     val clientId = clientIdInput.text.toString()
-                    val useSSL = sslSwitch.isChecked
+                    val password = null
 
-                    mqttService?.connect(url, port, clientId, useSSL)
+                    mqttService?.connect(url, port, clientId, password)
                 }
                 updateConnectionStatus()
             }

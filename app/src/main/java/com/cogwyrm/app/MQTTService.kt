@@ -14,7 +14,7 @@ import java.util.*
 class MQTTService : Service() {
     private val binder = LocalBinder()
     private var mqttClient: MqttAndroidClient? = null
-    private var isConnected = false
+    private var _isConnected = false
     private val messageHistory = mutableListOf<MessageRecord>()
     private var notificationManager: NotificationManager? = null
     private val NOTIFICATION_CHANNEL_ID = "com.cogwyrm.app.mqtt"
@@ -55,6 +55,8 @@ class MQTTService : Service() {
         }
     }
 
+    fun isConnected(): Boolean = _isConnected
+
     fun connect(serverUri: String, port: Int, username: String? = null, password: String? = null) {
         val generatedClientId = "CogwyrmMQTT-" + UUID.randomUUID().toString()
         val fullServerUri = "tcp://$serverUri:$port"
@@ -63,7 +65,7 @@ class MQTTService : Service() {
             setCallback(object : MqttCallback {
                 override fun connectionLost(cause: Throwable?) {
                     Log.e(TAG, "Connection lost: ${cause?.message}")
-                    isConnected = false
+                    _isConnected = false
                     showNotification("Connection Lost", "MQTT connection was lost")
                 }
 
@@ -94,13 +96,13 @@ class MQTTService : Service() {
             mqttClient?.connect(options, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     Log.d(TAG, "Connection success")
-                    isConnected = true
+                    _isConnected = true
                     showNotification("Connected", "Successfully connected to MQTT broker")
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                     Log.e(TAG, "Connection failure: ${exception?.message}")
-                    isConnected = false
+                    _isConnected = false
                     showNotification("Connection Failed", "Failed to connect to MQTT broker")
                 }
             })
@@ -112,7 +114,7 @@ class MQTTService : Service() {
     fun disconnect() {
         try {
             mqttClient?.disconnect()
-            isConnected = false
+            _isConnected = false
         } catch (e: MqttException) {
             e.printStackTrace()
         }

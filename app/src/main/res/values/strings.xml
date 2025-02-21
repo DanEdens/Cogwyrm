@@ -4,4 +4,12 @@
     <string name="config_title">Cogwyrm MQTT Configuration</string>
     <string name="tasker_notification_title">MQTT Action</string>
     <string name="tasker_notification_text">Publishing message to MQTT broker</string>
+
+    <!-- Tasker Input Labels -->
+    <string name="label_broker_url">Broker URL</string>
+    <string name="label_port">Port</string>
+    <string name="label_client_id">Client ID</string>
+    <string name="label_topic">Topic</string>
+    <string name="label_message">Message</string>
+    <string name="label_use_ssl">Use SSL</string>
 </resources>

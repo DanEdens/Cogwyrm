@@ -8,9 +8,18 @@ import com.cogwyrm.app.databinding.ActivityMqttConfigBinding
 
 class MQTTConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTActionInput> {
     private lateinit var binding: ActivityMqttConfigBinding
-    private val taskerHelper by lazy { MQTTTaskerAction() }
+    private val taskerHelper by lazy { MQTTTaskerAction(this) }
 
     override val context get() = applicationContext
+    override val inputForTasker: TaskerInput<MQTTActionInput>
+        get() = TaskerInput(MQTTActionInput(
+            brokerUrl = binding.brokerUrlInput.text.toString(),
+            port = binding.portInput.text.toString(),
+            clientId = binding.clientIdInput.text.toString().takeIf { it.isNotEmpty() },
+            topic = binding.topicInput.text.toString(),
+            message = binding.messageInput.text.toString(),
+            useSsl = binding.useSslCheckbox.isChecked
+        ))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,15 +32,7 @@ class MQTTConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTActionInp
 
             // Handle save button click
             saveButton.setOnClickListener {
-                val input = MQTTActionInput(
-                    brokerUrl = brokerUrlInput.text.toString(),
-                    port = portInput.text.toString(),
-                    clientId = clientIdInput.text.toString().takeIf { it.isNotEmpty() },
-                    topic = topicInput.text.toString(),
-                    message = messageInput.text.toString(),
-                    useSsl = useSslCheckbox.isChecked
-                )
-                taskerHelper.finishForTasker(input)
+                taskerHelper.finishForTasker()
             }
         }
     }
