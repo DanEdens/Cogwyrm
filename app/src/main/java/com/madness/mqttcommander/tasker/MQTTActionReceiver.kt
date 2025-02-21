@@ -1,21 +1,24 @@
-package com.madness.cogwyrm.tasker
+package com.madness.mqttcommander.tasker
 
 import android.content.Context
 import android.content.Intent
 import com.joaomgcd.taskerpluginlibrary.action.TaskerPluginRunnerAction
+import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultError
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSuccess
-import com.madness.cogwyrm.MQTTService
-import com.madness.cogwyrm.R
+import com.madness.mqttcommander.MQTTService
+import com.joaomgcd.taskerpluginlibrary.extensions.requestQuery
+import com.madness.mqttcommander.R
 
-class MQTTActionReceiver : TaskerPluginRunnerAction<MQTTActionInput>() {
+class MQTTActionReceiver : TaskerPluginRunnerAction<MQTTActionInput, Unit>() {
     override val notificationProperties by lazy {
         NotificationProperties(
-            iconResId = R.drawable.ic_arrow_upward,
+            iconResId = R.mipmap.ic_launcher,
             titleResId = R.string.tasker_notification_title,
-            textResId = R.string.tasker_notification_text
+            textResId = R.string.tasker_notification_text,
+            iconUsesActionColor = true
         )
     }
 
@@ -32,9 +35,9 @@ class MQTTActionReceiver : TaskerPluginRunnerAction<MQTTActionInput>() {
                 input.regular.useSsl
             )
             service.publish(input.regular.topic, input.regular.message)
-            TaskerPluginResultSuccess()
+            TaskerPluginResultSuccess(Unit)
         } catch (e: Exception) {
-            TaskerPluginResultError(e.message ?: "Unknown error")
+            TaskerPluginResultError(e)
         }
     }
 }

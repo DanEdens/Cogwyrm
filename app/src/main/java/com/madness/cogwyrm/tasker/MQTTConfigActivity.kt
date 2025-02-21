@@ -9,6 +9,7 @@ import com.madness.cogwyrm.databinding.ActivityMqttConfigBinding
 
 class MQTTConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTActionInput> {
     private lateinit var binding: ActivityMqttConfigBinding
+    private val taskerHelper by lazy { MQTTActionHelper(this) }
 
     override val context get() = this
     override val inputForTasker: TaskerInput<MQTTActionInput>
@@ -32,9 +33,11 @@ class MQTTConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTActionInp
 
             // Set up save button
             saveButton.setOnClickListener {
-                finish()
+                taskerHelper.finishForTasker()
             }
         }
+
+        taskerHelper.onCreate()
     }
 
     override fun assignFromInput(input: TaskerInput<MQTTActionInput>) {
@@ -48,16 +51,5 @@ class MQTTConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTActionInp
                 messageInput.setText(message)
             }
         }
-    }
-
-    override fun getResultInput(): TaskerInput<MQTTActionInput> {
-        return TaskerInput(MQTTActionInput(
-            brokerUrl = binding.brokerUrlInput.text.toString(),
-            port = binding.portInput.text.toString(),
-            clientId = binding.clientIdInput.text.toString(),
-            useSsl = binding.sslSwitch.isChecked,
-            topic = binding.topicInput.text.toString(),
-            message = binding.messageInput.text.toString()
-        ))
     }
 }
