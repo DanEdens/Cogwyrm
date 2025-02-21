@@ -6,19 +6,20 @@ The project is a Tasker plugin for MQTT communication, allowing automation of MQ
 ### Components Overview
 - `MainActivity`: Basic MQTT client UI
 - `MQTTService`: Android Service for MQTT operations
-- `MQTTClient`: MQTT client wrapper
+- `MQTTClient`: MQTT client wrapper (✓ Enhanced with connection stability)
 - `MQTTActionReceiver`: Tasker action plugin for publishing messages
-- `MQTTEventReceiver`: Tasker event plugin for MQTT message triggers (TODO)
+- `MQTTEventReceiver`: Tasker event plugin for MQTT message triggers (✓ Enhanced with robust subscription management)
 - `MQTTConfigActivity`: Tasker configuration UI for publishing
 - `MQTTEventConfigActivity`: Tasker configuration UI for triggers (TODO)
 
 ## Critical Issues
 
-### 1. MQTT Connection Stability
-- [ ] Fix connection handling in MQTTClient
-- [ ] Implement proper connection lifecycle management
-- [ ] Add connection retry mechanism
-- [ ] Handle network changes gracefully
+### 1. MQTT Connection Stability ✓
+- [x] Fix connection handling in MQTTClient
+- [x] Implement proper connection lifecycle management
+- [x] Add connection retry mechanism with exponential backoff
+- [x] Handle network changes gracefully
+- [x] Add comprehensive test coverage
 
 ### 2. Tasker Integration
 #### Action Plugin (Publishing)
@@ -27,11 +28,11 @@ The project is a Tasker plugin for MQTT communication, allowing automation of MQ
 - [ ] Add better error reporting to Tasker
 - [ ] Support more MQTT operations (subscribe, disconnect)
 
-#### Event Plugin (Triggers)
-- [ ] Create MQTTEventReceiver for handling MQTT triggers
-- [ ] Implement event configuration activity
-- [ ] Add topic pattern matching (wildcards)
-- [ ] Provide message content as Tasker variables:
+#### Event Plugin (Triggers) ✓
+- [x] Create MQTTEventReceiver for handling MQTT triggers
+- [x] Implement proper subscription management
+- [x] Add topic pattern matching (wildcards)
+- [x] Provide message content as Tasker variables:
   - %mqtt_topic - The received topic
   - %mqtt_message - The message content
   - %mqtt_qos - QoS level
@@ -167,105 +168,60 @@ The project is a Tasker plugin for MQTT communication, allowing automation of MQ
 
 ## Recent Progress
 
-### Manifest Enhancements
-- [x] Added package declaration
-- [x] Summoned FOREGROUND_SERVICE permission
-- [x] Enhanced application metadata
-- [x] Fortified MQTTService configuration
-- [x] Expanded Tasker plugin components
-  - Added MQTTEventConfigActivity
-  - Added MQTTEventReceiver
-  - Prepared for event plugin integration
+### Connection Stability Enhancements
+- [x] Implemented exponential backoff retry mechanism
+- [x] Added network connectivity monitoring
+- [x] Enhanced error handling and logging
+- [x] Added QoS and retained message support
+- [x] Created comprehensive test suite
+
+### Event Plugin Enhancements
+- [x] Implemented robust subscription management
+- [x] Added connection sharing between conditions
+- [x] Added topic-level subscription tracking
+- [x] Enhanced error handling and recovery
+- [x] Added comprehensive test coverage
+
+### Test Infrastructure
+- [x] Added Mockito testing framework
+- [x] Created MQTTClient unit tests
+- [x] Created MQTTEventReceiver unit tests
+- [x] Added network callback tests
+- [x] Added message handling tests
+- [x] Added connection lifecycle tests
 
 ### Immediate Next Steps
-- [ ] Validate Tasker event plugin functionality
-- [ ] Test background service interactions
-- [ ] Implement robust error handling in new components
-- [ ] Create comprehensive logging for new service configurations
+- [ ] Implement MQTTEventConfigActivity
+- [ ] Enhance MQTTActionReceiver with async operations
+- [ ] Integrate with MQTTService for background operation
+- [ ] Add comprehensive logging for all components
 
 ## Updated Priority Shifts
-1. **Tasker Event Plugin Stabilization**
-   - Complete MQTTEventReceiver implementation
-   - Ensure proper topic subscription mechanisms
-   - Add comprehensive error reporting
+1. **Event Plugin UI Implementation**
+   - Create MQTTEventConfigActivity
+   - Add topic pattern validation
+   - Add QoS and retained message configuration
+   - Add connection testing
 
-2. **Background Service Optimization**
-   - Refine foreground service handling
-   - Implement connection retry strategies
-   - Add network change resilience
+2. **Action Plugin Enhancement**
+   - Implement proper async operations
+   - Add better error reporting
+   - Support more MQTT operations
+   - Add operation queueing
 
-3. **Security Hardening**
-   - Review permission scopes
-   - Implement secure communication protocols
-   - Add credential management
+3. **Service Integration**
+   - Integrate enhanced MQTTClient with MQTTService
+   - Implement proper lifecycle management
+   - Add connection state persistence
 
 ## Potential Chaos Vectors 🌪️
-- Investigate potential race conditions in service startup
-- Profile memory and battery usage of background services
-- Explore edge cases in MQTT connection lifecycle
+- Monitor subscription memory usage
+- Profile topic pattern matching performance
+- Test wildcard subscription edge cases
+- Verify cleanup of shared connections
 
 ## Experimental Incantations 🧙‍♂️
-- Consider reactive programming models for MQTT interactions
-- Explore coroutine-based asynchronous handling
-- Implement circuit breaker pattern for connection management
-- Summon the Kotlin Flow-based message processing pipeline
-- Conjure a hexagonal architecture for maximum flexibility
-- Implement the Observer pattern using RxJava dark magic
-
-## CHAOS ENHANCEMENT PROTOCOLS 🌀
-### 1. Message Transformation Laboratory
-- [ ] Create JSON/YAML/XML transmutation engine
-- [ ] Implement message compression rituals
-- [ ] Add payload encryption ceremonies
-- [ ] Design custom protocol extensions
-
-### 2. Connection Sorcery
-- [ ] Implement WebSocket fallback tunneling
-- [ ] Add automatic broker discovery via mDNS
-- [ ] Create connection pool for load distribution
-- [ ] Design connection health monitoring system
-
-### 3. Advanced Event Alchemy
-- [ ] Implement message pattern matching using regex dark arts
-- [ ] Create event correlation engine for complex triggers
-- [ ] Add message transformation pipelines
-- [ ] Design custom scripting engine for message processing
-
-### 4. Performance Enchantments
-- [ ] Add message batching capabilities
-- [ ] Implement local message caching
-- [ ] Create adaptive QoS management
-- [ ] Design message prioritization system
-
-### 5. Testing Rituals
-- [ ] Summon chaos engineering test suite
-- [ ] Create network condition simulators
-- [ ] Implement fuzzing tests for message handling
-- [ ] Design performance stress test scenarios
-
-### 6. Integration Portals
-- [ ] Create bridges to other messaging protocols
-- [ ] Add webhook support for external systems
-- [ ] Implement REST API gateway
-- [ ] Design plugin system for protocol extensions
-
-## Mad Scientist's Notes 📝
-- Consider implementing a state machine for connection management
-- Explore reactive streams for message processing
-- Investigate MQTT 5.0 feature integration
-- Research advanced security patterns
-- Consider implementing a domain-specific language for message transformation
-
-## Potential Failure Scenarios 💥
-- Message ordering in high-throughput situations
-- Memory management under extreme load
-- Connection pooling edge cases
-- Race conditions in subscription management
-- Resource cleanup during unexpected termination
-
-## EMERGENCY PROTOCOLS 🚨
-- [ ] Design automatic failover mechanisms
-- [ ] Implement dead letter queues
-- [ ] Create circuit breakers for resource protection
-- [ ] Add automatic error recovery procedures
-- [ ] Design system health monitoring
+- Consider reactive programming for event handling
+- Explore coroutines for async operations
+- Implement circuit breaker pattern
+- Add telemetry for subscription metrics

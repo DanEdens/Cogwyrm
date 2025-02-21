@@ -1,6 +1,7 @@
 package com.cogwyrm.app.tasker
 
 import android.content.Context
+import android.util.Log
 import com.cogwyrm.app.mqtt.MQTTClient
 import com.cogwyrm.app.mqtt.TopicUtils
 import com.joaomgcd.taskerpluginlibrary.condition.TaskerPluginRunnerConditionEvent
@@ -11,11 +12,17 @@ import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultCondition
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultConditionSatisfied
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultConditionUnsatisfied
-import org.eclipse.paho.client.mqttv3.MqttMessage
-import timber.log.Timber
+import org.eclipse.paho.client.mqttv3.IMqttActionListener
+import org.eclipse.paho.client.mqttv3.IMqttToken
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 class MQTTEventRunner : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput, MQTTEventUpdate>() {
-    override fun getSatisfiedCondition(context: Context, input: TaskerInput<MQTTEventInput>, update: MQTTEventUpdate?): TaskerPluginResultCondition<MQTTEventOutput> {
+    override fun getSatisfiedCondition(
+        context: Context,
+        input: TaskerInput<MQTTEventInput>,
+        update: MQTTEventUpdate?
+    ): TaskerPluginResultCondition<MQTTEventOutput> {
         // If no update or topic doesn't match pattern, condition not satisfied
         if (update == null || !TopicUtils.topicMatchesPattern(input.regular.topic, update.topic)) {
             return TaskerPluginResultConditionUnsatisfied()
@@ -49,23 +56,25 @@ data class MQTTEventUpdate(
 
 class MQTTEventReceiver : MQTTEventHelper.ReceiverCondition() {
     companion object {
-        private val activeSubscriptions = mutableMapOf<String, MQTTSubscription>()
+        private const val TAG = "MQTTEventReceiver"
+        private val activeSubscriptions = ConcurrentHashMap<String, MQTTSubscription>()
 
         data class MQTTSubscription(
             val client: MQTTClient,
             val pattern: String,
-            var activeConditions: Int = 1
+            val refCount: AtomicInteger = AtomicInteger(1),
+            val topics: MutableSet<String> = mutableSetOf()
         )
 
-        fun handleMqttMessage(topic: String, message: MqttMessage) {
-            Timber.d("Received MQTT message on topic: $topic")
+        fun handleMqttMessage(topic: String, message: String, qos: Int, retained: Boolean) {
+            Log.d(TAG, "Received MQTT message on topic: $topic")
 
             // Create update object
             val update = MQTTEventUpdate(
                 topic = topic,
-                message = String(message.payload),
-                qos = message.qos,
-                retained = message.isRetained
+                message = message,
+                qos = qos,
+                retained = retained
             )
 
             // Notify Tasker about the event
@@ -78,104 +87,103 @@ class MQTTEventReceiver : MQTTEventHelper.ReceiverCondition() {
 
         // Validate topic pattern
         if (!TopicUtils.validateTopic(mqttInput.topic)) {
-            Timber.e("Invalid topic pattern: ${mqttInput.topic}")
+            Log.e(TAG, "Invalid topic pattern: ${mqttInput.topic}")
             return
         }
 
-        val subscriptionKey = "${mqttInput.brokerUrl}:${mqttInput.port}:${mqttInput.topic}"
+        val subscriptionKey = "${mqttInput.brokerUrl}:${mqttInput.port}:${mqttInput.clientId}"
 
-        synchronized(activeSubscriptions) {
-            val existingSubscription = activeSubscriptions[subscriptionKey]
-            if (existingSubscription != null) {
-                // Increment reference count for existing subscription
-                existingSubscription.activeConditions++
-                Timber.d("Incremented condition count for subscription: $subscriptionKey")
+        // Try to reuse existing subscription
+        activeSubscriptions[subscriptionKey]?.let { subscription ->
+            if (subscription.refCount.incrementAndGet() > 1) {
+                // Add new topic to existing subscription if not already subscribed
+                if (subscription.topics.add(mqttInput.topic)) {
+                    subscription.client.subscribe(mqttInput.topic, mqttInput.qos, object : IMqttActionListener {
+                        override fun onSuccess(asyncActionToken: IMqttToken?) {
+                            Log.d(TAG, "Successfully added topic ${mqttInput.topic} to existing subscription")
+                        }
+
+                        override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                            Log.e(TAG, "Failed to add topic ${mqttInput.topic} to existing subscription", exception)
+                            subscription.topics.remove(mqttInput.topic)
+                            subscription.refCount.decrementAndGet()
+                        }
+                    })
+                }
+                Log.d(TAG, "Reusing existing subscription for $subscriptionKey (ref count: ${subscription.refCount.get()})")
                 return
             }
+        }
 
-            // Create new subscription
-            try {
-                val client = MQTTClient(
-                    context = context,
-                    brokerUrl = mqttInput.brokerUrl,
-                    port = mqttInput.port,
-                    clientId = mqttInput.clientId ?: "cogwyrm_event_${System.currentTimeMillis()}",
-                    useSsl = mqttInput.useSsl,
-                    username = mqttInput.username,
-                    password = mqttInput.password,
-                    onConnectionLost = { cause ->
-                        Timber.e(cause, "MQTT connection lost for event subscription")
-                        // Implement reconnection logic
-                        handleConnectionLost(context, subscriptionKey, mqttInput)
-                    },
-                    onMessageArrived = { topic, message ->
-                        handleMqttMessage(topic, message)
-                    },
-                    onDeliveryComplete = { }
-                )
+        // Create new subscription
+        try {
+            val client = MQTTClient(
+                context = context,
+                brokerUrl = mqttInput.brokerUrl,
+                port = mqttInput.port,
+                clientId = mqttInput.clientId ?: "cogwyrm_event_${System.currentTimeMillis()}",
+                useSsl = mqttInput.useSsl,
+                onConnectionLost = { cause ->
+                    Log.e(TAG, "MQTT connection lost for event subscription", cause)
+                },
+                onMessageArrived = { topic, message ->
+                    handleMqttMessage(topic, message, mqttInput.qos, false)
+                },
+                onDeliveryComplete = { }
+            )
 
-                client.connect()
-                client.subscribe(mqttInput.topic, mqttInput.qos)
-
-                activeSubscriptions[subscriptionKey] = MQTTSubscription(
-                    client = client,
-                    pattern = mqttInput.topic
-                )
-
-                Timber.d("Created new subscription for: $subscriptionKey")
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to create MQTT subscription")
+            val subscription = MQTTSubscription(
+                client = client,
+                pattern = mqttInput.topic
+            ).also { sub ->
+                sub.topics.add(mqttInput.topic)
             }
+
+            client.connect(object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    client.subscribe(mqttInput.topic, mqttInput.qos, object : IMqttActionListener {
+                        override fun onSuccess(asyncActionToken: IMqttToken?) {
+                            Log.d(TAG, "Successfully subscribed to ${mqttInput.topic}")
+                            activeSubscriptions[subscriptionKey] = subscription
+                        }
+
+                        override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                            Log.e(TAG, "Failed to subscribe to ${mqttInput.topic}", exception)
+                            client.disconnect()
+                        }
+                    })
+                }
+
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                    Log.e(TAG, "Failed to connect for subscription", exception)
+                }
+            })
+
+            Log.d(TAG, "Created new subscription for: $subscriptionKey")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create MQTT subscription", e)
         }
     }
 
     override fun removeCondition(context: Context, input: TaskerInput<MQTTEventInput>, update: MQTTEventUpdate?) {
         val mqttInput = input.regular
-        val subscriptionKey = "${mqttInput.brokerUrl}:${mqttInput.port}:${mqttInput.topic}"
+        val subscriptionKey = "${mqttInput.brokerUrl}:${mqttInput.port}:${mqttInput.clientId}"
 
-        synchronized(activeSubscriptions) {
-            val subscription = activeSubscriptions[subscriptionKey] ?: return
-
-            subscription.activeConditions--
-            if (subscription.activeConditions <= 0) {
-                // Last condition removed, clean up subscription
+        activeSubscriptions[subscriptionKey]?.let { subscription ->
+            if (subscription.refCount.decrementAndGet() <= 0) {
+                // Last reference removed, clean up subscription
                 try {
                     subscription.client.disconnect()
                     activeSubscriptions.remove(subscriptionKey)
-                    Timber.d("Removed subscription: $subscriptionKey")
+                    Log.d(TAG, "Removed subscription: $subscriptionKey")
                 } catch (e: Exception) {
-                    Timber.e(e, "Error cleaning up MQTT subscription")
+                    Log.e(TAG, "Error cleaning up MQTT subscription", e)
                 }
+            } else {
+                // Remove topic from subscription if no other conditions use it
+                subscription.topics.remove(mqttInput.topic)
+                Log.d(TAG, "Decremented subscription ref count: ${subscription.refCount.get()}")
             }
-        }
-    }
-
-    private fun handleConnectionLost(context: Context, subscriptionKey: String, input: MQTTEventInput) {
-        synchronized(activeSubscriptions) {
-            val subscription = activeSubscriptions[subscriptionKey] ?: return
-
-            // Simple exponential backoff retry
-            var retryDelay = 1000L
-            var retryCount = 0
-            val maxRetries = 5
-
-            while (retryCount < maxRetries) {
-                try {
-                    Thread.sleep(retryDelay)
-                    subscription.client.connect()
-                    subscription.client.subscribe(input.topic, input.qos)
-                    Timber.d("Reconnected subscription: $subscriptionKey")
-                    return
-                } catch (e: Exception) {
-                    Timber.e(e, "Retry $retryCount failed")
-                    retryCount++
-                    retryDelay *= 2
-                }
-            }
-
-            // If all retries failed, remove the subscription
-            activeSubscriptions.remove(subscriptionKey)
-            Timber.e("Failed to reconnect after $maxRetries attempts")
         }
     }
 }
