@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="qos_levels">
+        <item>QoS 0 (At most once)</item>
+        <item>QoS 1 (At least once)</item>
+        <item>QoS 2 (Exactly once)</item>
+    </string-array>
+</resources> 
