@@ -1,11 +1,11 @@
-package com.madness.cogwyrm.tasker
+package com.cogwyrm.app.tasker
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
-import com.madness.cogwyrm.R
-import com.madness.cogwyrm.databinding.ActivityMqttConfigBinding
+import com.cogwyrm.app.R
+import com.cogwyrm.app.databinding.ActivityMqttConfigBinding
 
 class MQTTConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTActionInput> {
     private lateinit var binding: ActivityMqttConfigBinding
@@ -27,7 +27,7 @@ class MQTTConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTActionInp
         binding = ActivityMqttConfigBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.apply {
+        with(binding) {
             // Set default port
             portInput.setText("1883")
 
@@ -41,8 +41,8 @@ class MQTTConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTActionInp
     }
 
     override fun assignFromInput(input: TaskerInput<MQTTActionInput>) {
-        input.regular.run {
-            binding.apply {
+        with(binding) {
+            input.regular.run {
                 brokerUrlInput.setText(brokerUrl)
                 portInput.setText(port)
                 clientIdInput.setText(clientId)

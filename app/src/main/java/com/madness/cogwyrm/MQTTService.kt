@@ -1,4 +1,4 @@
-package com.madness.cogwyrm
+package com.cogwyrm.app
 
 import android.app.*
 import android.content.Intent

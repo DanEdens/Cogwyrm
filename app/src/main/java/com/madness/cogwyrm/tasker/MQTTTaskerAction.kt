@@ -1,4 +1,4 @@
-package com.madness.cogwyrm.tasker
+package com.cogwyrm.app.tasker
 
 import android.content.Context
 import android.content.Intent
@@ -24,13 +24,14 @@ data class MQTTActionInput(
 class MQTTActionHelper(config: TaskerPluginConfig<MQTTActionInput>) : TaskerPluginConfigHelper<MQTTActionInput, MQTTActionReceiver, Unit>(config) {
     override val runnerClass = MQTTActionReceiver::class.java
     override val inputClass = MQTTActionInput::class.java
+    override val outputClass = Unit::class.java
 
     override fun isInputValid(input: TaskerInput<MQTTActionInput>): TaskerPluginResult<Unit> {
         if (input.regular.brokerUrl.isEmpty()) {
-            return TaskerPluginResultError("Broker URL cannot be empty")
+            return TaskerPluginResultError(Exception("Broker URL cannot be empty"))
         }
         if (input.regular.topic.isEmpty()) {
-            return TaskerPluginResultError("Topic cannot be empty")
+            return TaskerPluginResultError(Exception("Topic cannot be empty"))
         }
         return TaskerPluginResultSuccess()
     }
