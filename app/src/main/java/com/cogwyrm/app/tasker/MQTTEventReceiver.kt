@@ -55,14 +55,14 @@ class MQTTEventReceiver : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTE
     override fun getSatisfiedCondition(
         context: Context,
         input: TaskerInput<MQTTEventInput>,
-        update: TaskerInput<MQTTEventOutput>?
+        update: MQTTEventOutput?
     ): TaskerPluginResultCondition<MQTTEventOutput> {
         // If no update or topic doesn't match pattern, condition not satisfied
-        if (update?.regular == null || !TopicUtils.topicMatchesPattern(input.regular.topic, update.regular.topic)) {
+        if (update == null || !TopicUtils.topicMatchesPattern(input.regular.topic, update.topic)) {
             return TaskerPluginResultConditionUnsatisfied()
         }
 
-        return TaskerPluginResultConditionSatisfied(context, update.regular)
+        return TaskerPluginResultConditionSatisfied(context, update)
     }
 
     override fun addCondition(context: Context, input: TaskerInput<MQTTEventInput>) {

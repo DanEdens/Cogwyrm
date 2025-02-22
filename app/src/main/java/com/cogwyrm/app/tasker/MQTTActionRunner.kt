@@ -1,7 +1,7 @@
-https://tasker.joaoapps.com/pluginslibrary.htmlurpackage com.cogwyrm.app.tasker
+package com.cogwyrm.app.tasker
 
 import android.content.Context
-import com.cogwyrm.app.MQTTService
+import com.cogwyrm.app.mqtt.MQTTService
 import com.joaomgcd.taskerpluginlibrary.action.TaskerPluginRunnerAction
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
@@ -13,9 +13,9 @@ class MQTTActionRunner : TaskerPluginRunnerAction<MQTTActionInput, Unit>() {
     override fun run(context: Context, input: TaskerInput<MQTTActionInput>): TaskerPluginResult<Unit> {
         return try {
             runBlocking {
-                val service = MQTTService()
+                val service = MQTTService(context)
                 service.connect(
-                    serverUri = input.regular.brokerUrl,
+                    brokerUrl = input.regular.brokerUrl,
                     port = input.regular.port.toInt(),
                     clientId = input.regular.clientId,
                     useSsl = input.regular.useSsl,
