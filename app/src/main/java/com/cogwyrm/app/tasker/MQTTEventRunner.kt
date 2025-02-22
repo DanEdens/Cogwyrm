@@ -1,159 +1,86 @@
 package com.cogwyrm.app.tasker
 
 import android.content.Context
+import android.os.Parcelable
 import android.util.Log
 import com.cogwyrm.app.mqtt.MQTTClient
-import com.cogwyrm.app.utils.CogwyrmError
 import com.joaomgcd.taskerpluginlibrary.condition.TaskerPluginRunnerConditionEvent
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
+import com.joaomgcd.taskerpluginlibrary.input.TaskerInputObject
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultCondition
-import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultConditionSatisfied
-import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultConditionUnsatisfied
 import kotlinx.coroutines.*
-import java.util.concurrent.ConcurrentHashMap
+import kotlinx.parcelize.Parcelize
 
-class MQTTEventRunner : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput>() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val activeClients = ConcurrentHashMap<String, MQTTClient>()
-    private val activeSubscriptions = ConcurrentHashMap<String, MutableSet<String>>()
+class MQTTEventRunner : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput, MQTTEventUpdate>() {
+    private var client: MQTTClient? = null
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     override fun getSatisfiedCondition(
         context: Context,
-        input: MQTTEventInput,
-        update: MQTTEventOutput?
+        input: TaskerInput<MQTTEventInput>,
+        update: MQTTEventUpdate?
     ): TaskerPluginResultCondition<MQTTEventOutput> {
-        if (update == null) {
-            return TaskerPluginResultConditionUnsatisfied()
+        return if (update != null && isTopicMatch(input.regular.topic, update.topic)) {
+            TaskerPluginResultCondition.satisfied(context, MQTTEventOutput(update.topic, update.payload))
+        } else {
+            TaskerPluginResultCondition.unsatisfied(context)
         }
-
-        // Check if the update matches our subscription
-        if (!isTopicMatch(input.topic, update.topic)) {
-            return TaskerPluginResultConditionUnsatisfied()
-        }
-
-        return TaskerPluginResultConditionSatisfied(context, update)
     }
 
     override fun requestQuery(context: Context, input: TaskerInput<MQTTEventInput>) {
-        val config = input.regular
-        val clientKey = "${config.brokerUrl}:${config.port}"
-
         scope.launch {
             try {
-                // Get or create client
-                val client = activeClients.getOrPut(clientKey) {
-                    MQTTClient(
-                        context = context,
-                        brokerUrl = config.brokerUrl,
-                        port = config.port.toString(),
-                        clientId = config.clientId,
-                        useSsl = config.useSSL,
-                        onConnectionLost = { cause -> handleConnectionLost(clientKey, cause) },
-                        onMessageArrived = { topic, message -> handleMessageArrived(topic, message) }
-                    )
-                }
+                client = MQTTClient(
+                    context = context,
+                    brokerUrl = input.regular.brokerUrl,
+                    port = input.regular.port,
+                    clientId = input.regular.clientId,
+                    useSsl = input.regular.useSSL,
+                    username = input.regular.username,
+                    password = input.regular.password
+                )
 
-                // Connect if not already connected
-                if (!client.isConnected()) {
-                    withContext(Dispatchers.IO) {
-                        client.connect()
-                    }
-                }
-
-                // Add subscription
-                val subscriptions = activeSubscriptions.getOrPut(clientKey) { mutableSetOf() }
-                if (subscriptions.add(config.topic)) {
-                    withContext(Dispatchers.IO) {
-                        client.subscribe(config.topic, config.qos) { topic, message ->
-                            handleMessageArrived(topic, message)
-                        }
-                    }
+                client?.connect()
+                client?.subscribe(input.regular.topic, input.regular.qos) { topic, payload ->
+                    val update = MQTTEventUpdate(topic, payload)
+                    eventReceived(context, update)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error in requestQuery", e)
-                handleError(context, e)
+                Log.e("MQTTEventRunner", "Error in MQTT connection", e)
             }
         }
     }
 
     override fun destroy(context: Context, input: TaskerInput<MQTTEventInput>) {
-        val config = input.regular
-        val clientKey = "${config.brokerUrl}:${config.port}"
-
         scope.launch {
             try {
-                // Remove subscription
-                activeSubscriptions[clientKey]?.remove(config.topic)
-
-                // If no more subscriptions for this client, disconnect and remove
-                if (activeSubscriptions[clientKey]?.isEmpty() == true) {
-                    activeClients[clientKey]?.let { client ->
-                        withContext(Dispatchers.IO) {
-                            client.disconnect()
-                        }
-                        activeClients.remove(clientKey)
-                        activeSubscriptions.remove(clientKey)
-                    }
-                }
+                client?.unsubscribe(input.regular.topic)
+                client?.disconnect()
             } catch (e: Exception) {
-                Log.e(TAG, "Error in destroy", e)
-                handleError(context, e)
+                Log.e("MQTTEventRunner", "Error destroying MQTT client", e)
+            } finally {
+                client = null
+                scope.cancel()
             }
         }
     }
 
-    private fun handleConnectionLost(clientKey: String, cause: Throwable?) {
-        Log.w(TAG, "Connection lost for $clientKey: ${cause?.message}")
-        // The MQTTClient will handle reconnection automatically
-    }
+    private fun isTopicMatch(subscribedTopic: String, publishedTopic: String): Boolean {
+        val subscribedParts = subscribedTopic.split("/")
+        val publishedParts = publishedTopic.split("/")
 
-    private fun handleMessageArrived(topic: String, message: String) {
-        val output = MQTTEventOutput(
-            message = message,
-            topic = topic,
-            timestamp = System.currentTimeMillis()
-        )
-        // Notify Tasker of the event
-        taskerPluginRunnerConditionEvent?.onEventReceived(output)
-    }
+        if (subscribedParts.size != publishedParts.size) return false
 
-    private fun handleError(context: Context, error: Throwable) {
-        when (error) {
-            is CogwyrmError -> Log.e(TAG, "Cogwyrm error: ${error.message}")
-            is MqttException -> Log.e(TAG, "MQTT error: ${error.message}")
-            else -> Log.e(TAG, "Unknown error: ${error.message}")
+        return subscribedParts.zip(publishedParts).all { (sub, pub) ->
+            sub == "#" || sub == "+" || sub == pub
         }
-    }
-
-    private fun isTopicMatch(subscription: String, topic: String): Boolean {
-        val subParts = subscription.split('/')
-        val topicParts = topic.split('/')
-
-        if (subParts.size > topicParts.size && subParts.last() != "#") {
-            return false
-        }
-
-        for (i in subParts.indices) {
-            if (i >= topicParts.size) {
-                return false
-            }
-            when (subParts[i]) {
-                "#" -> return true
-                "+" -> continue
-                else -> if (subParts[i] != topicParts[i]) return false
-            }
-        }
-
-        return subParts.size == topicParts.size || (subParts.last() == "#" && subParts.size <= topicParts.size)
-    }
-
-    companion object {
-        private const val TAG = "MQTTEventRunner"
     }
 }
 
+@TaskerInputObject(key = "mqtt_event_update")
+@Parcelize
 data class MQTTEventUpdate(
     val topic: String,
-    val message: String,
+    val payload: String,
     val timestamp: Long = System.currentTimeMillis()
-)
+) : Parcelable

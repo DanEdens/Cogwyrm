@@ -2,172 +2,48 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:padding="16dp">
+    android:layout_height="match_parent">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:spacing="8dp">
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/status_card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="@color/status_disconnected"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="4dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:padding="16dp"
-                android:text="MQTT Status"
-                android:textColor="@android:color/white"
-                android:textStyle="bold" />
-        </com.google.android.material.card.MaterialCardView>
+        android:padding="16dp">
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:id="@+id/brokerUrlLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:hint="Broker URL">
+            android:hint="@string/broker_url"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/broker_url_input"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textUri" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:hint="Port">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/broker_port_input"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number"
-                android:text="1883" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:hint="Client ID">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/client_id_input"
+                android:id="@+id/messageInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
         </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/ssl_switch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:text="Use SSL/TLS" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/connect_button"
+            android:id="@+id/publishButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:text="Connect" />
+            android:layout_marginTop="8dp"
+            android:text="Publish" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginBottom="24dp"
-            android:background="?android:attr/listDivider" />
-
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/subscribeButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:hint="Topic">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/topic_input"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:hint="Message">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/message_input"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="top"
-                android:lines="4" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/publish_button"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:enabled="false"
-                android:text="Publish" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/subscribe_button"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:enabled="false"
-                android:text="Subscribe" />
-
-        </LinearLayout>
+            android:layout_marginTop="8dp"
+            android:text="Subscribe" />
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="Message History"
-            android:textAppearance="?attr/textAppearanceHeadline6" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/messages_recycler_view"
-            android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:background="@android:color/transparent"
-            android:clipToPadding="false"
-            android:padding="4dp" />
-
-        <TextView
-            android:id="@+id/status_text"
+            android:id="@+id/connectionStatusText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="16sp"
             android:layout_marginTop="16dp"
-            android:text="Not connected" />
+            android:gravity="center"
+            android:textAppearance="?attr/textAppearanceBody1"/>
 
     </LinearLayout>
 </ScrollView> 

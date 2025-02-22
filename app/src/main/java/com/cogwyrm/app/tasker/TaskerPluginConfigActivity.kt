@@ -2,26 +2,36 @@ package com.cogwyrm.app.tasker
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
-import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigHelper
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
-import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginRunner
 
-abstract class TaskerPluginConfigActivity<TInput : Any> : AppCompatActivity(), TaskerPluginConfig<TInput> {
+abstract class TaskerPluginConfigActivity<TInput : Any> : AppCompatActivity() {
+    protected val taskerConfig: TaskerPluginConfig<TInput> by lazy { createTaskerConfig() }
 
-    override val context: Context
-        get() = this
+    abstract fun createTaskerConfig(): TaskerPluginConfig<TInput>
+    abstract fun createDefaultInput(): TInput
 
-    abstract override fun assignFromInput(input: TaskerInput<TInput>)
-    abstract override fun getInputForTasker(): TaskerInput<TInput>
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        loadInitialInput()
+    }
+
+    private fun loadInitialInput() {
+        val input = taskerConfig.inputForTasker
+        taskerConfig.assignFromInput(input)
+    }
 
     protected fun finishForTasker() {
-        val input = getInputForTasker()
-        if (input.regular.validateInput()) {
-            setResult(Activity.RESULT_OK, input.toIntent())
+        val input = taskerConfig.inputForTasker
+        if ((input.regular as? MQTTEventInput)?.validateInput() == true) {
+            val intent = Intent().apply {
+                putExtra("input", (input.regular as MQTTEventInput).toBundle())
+            }
+            setResult(Activity.RESULT_OK, intent)
             finish()
         } else {
             Toast.makeText(this, "Invalid configuration", Toast.LENGTH_SHORT).show()

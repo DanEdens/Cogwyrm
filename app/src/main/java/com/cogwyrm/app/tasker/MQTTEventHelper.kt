@@ -2,98 +2,102 @@ package com.cogwyrm.app.tasker
 
 import android.content.Context
 import android.util.Log
-import com.cogwyrm.app.utils.CogwyrmError
+import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigHelper
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
-import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
-import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultError
-import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSuccess
+import com.joaomgcd.taskerpluginlibrary.SimpleResult
+import com.joaomgcd.taskerpluginlibrary.SimpleResultError
+import com.joaomgcd.taskerpluginlibrary.SimpleResultSuccess
 
-class MQTTEventHelper(private val context: Context) : TaskerPluginConfigHelper<MQTTEventInput, MQTTEventOutput, MQTTEventRunner>(context) {
-    override val runnerClass = MQTTEventRunner::class.java
-    override val inputClass = MQTTEventInput::class.java
-    override val outputClass = MQTTEventOutput::class.java
-
-    override fun isInputValid(input: TaskerInput<MQTTEventInput>): TaskerPluginResult<MQTTEventOutput> {
+class MQTTEventHelper(context: Context) : TaskerPluginConfigHelper<MQTTEventInput, MQTTEventOutput, MQTTEventRunner>(
+    config = TaskerPluginConfig(
+        context = context,
+        inputClass = MQTTEventInput::class.java,
+        outputClass = MQTTEventOutput::class.java,
+        runnerClass = MQTTEventRunner::class.java
+    )
+) {
+    override fun isInputValid(input: TaskerInput<MQTTEventInput>): SimpleResult {
         return try {
-            val config = input.regular
-            validateConfiguration(config)
-            TaskerPluginResultSuccess()
-        } catch (e: CogwyrmError.ValidationError) {
-            Log.e(TAG, "Validation error: ${e.message}")
-            TaskerPluginResultError(e)
+            validateConfiguration(input.regular)
+            SimpleResultSuccess
         } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error during validation", e)
-            TaskerPluginResultError(CogwyrmError.ValidationError("Unexpected error: ${e.message}"))
+            SimpleResultError(e.message ?: "Invalid configuration")
         }
     }
 
-    private fun validateConfiguration(config: MQTTEventInput) {
-        // Basic validation
-        if (!config.validateInput()) {
-            throw CogwyrmError.ValidationError("Invalid configuration")
-        }
-
-        // Additional validation
-        validateConnectionParams(config)
-        validateSecurityParams(config)
-        validateTopicParams(config)
+    private fun validateConfiguration(input: MQTTEventInput) {
+        validateConnectionParams(input)
+        validateSecurityParams(input)
+        validateTopicParams(input)
     }
 
-    private fun validateConnectionParams(config: MQTTEventInput) {
-        if (config.port == 1883 && config.useSSL) {
-            throw CogwyrmError.ValidationError("SSL/TLS typically uses port 8883")
+    private fun validateConnectionParams(input: MQTTEventInput) {
+        if (input.brokerUrl.isBlank()) {
+            throw IllegalArgumentException("Broker URL cannot be empty")
         }
-        if (config.port == 8883 && !config.useSSL) {
-            throw CogwyrmError.ValidationError("Port 8883 is typically used with SSL/TLS")
+
+        if (input.port !in 1..65535) {
+            throw IllegalArgumentException("Port must be between 1 and 65535")
         }
-        if (config.keepAlive < 10) {
-            throw CogwyrmError.ValidationError("Keep alive should be at least 10 seconds")
+
+        if (input.useSSL && input.port == 1883) {
+            throw IllegalArgumentException("Port 1883 is typically used for non-SSL connections. Consider using 8883 for SSL/TLS")
         }
-        if (config.connectionTimeout < 10) {
-            throw CogwyrmError.ValidationError("Connection timeout should be at least 10 seconds")
+
+        if (input.keepAlive < 0) {
+            throw IllegalArgumentException("Keep alive interval must be non-negative")
+        }
+
+        if (input.connectionTimeout < 0) {
+            throw IllegalArgumentException("Connection timeout must be non-negative")
         }
     }
 
-    private fun validateSecurityParams(config: MQTTEventInput) {
-        if (config.useSSL) {
-            if (config.username.isBlank() && config.password.isNotBlank()) {
-                throw CogwyrmError.ValidationError("Username is required when password is provided")
+    private fun validateSecurityParams(input: MQTTEventInput) {
+        if (input.useSSL) {
+            if (!input.username.isNullOrBlank() && input.password.isNullOrBlank()) {
+                throw IllegalArgumentException("Password is required when username is provided")
             }
-            if (config.username.isNotBlank() && config.password.isBlank()) {
-                throw CogwyrmError.ValidationError("Password is required when username is provided")
+            if (input.username.isNullOrBlank() && !input.password.isNullOrBlank()) {
+                throw IllegalArgumentException("Username is required when password is provided")
             }
         }
     }
 
-    private fun validateTopicParams(config: MQTTEventInput) {
-        // Check for invalid topic characters
-        val invalidChars = setOf('#', '+', '/')
-        if (config.topic.any { it in invalidChars } && !isValidWildcardTopic(config.topic)) {
-            throw CogwyrmError.ValidationError("Invalid topic format")
+    private fun validateTopicParams(input: MQTTEventInput) {
+        if (input.topic.isBlank()) {
+            throw IllegalArgumentException("Topic cannot be empty")
         }
 
-        // Check QoS level for wildcards
-        if (config.topic.contains('#') && config.qos > 1) {
-            throw CogwyrmError.ValidationError("Multi-level wildcards (#) should use QoS 0 or 1")
+        if (!isValidWildcardTopic(input.topic)) {
+            throw IllegalArgumentException("Invalid topic format")
+        }
+
+        if (input.qos !in 0..2) {
+            throw IllegalArgumentException("QoS must be between 0 and 2")
+        }
+
+        // Additional validation for wildcard topics
+        if (input.topic.contains('#') || input.topic.contains('+')) {
+            if (input.qos > 1) {
+                throw IllegalArgumentException("QoS 2 is not recommended for wildcard topics")
+            }
         }
     }
 
     private fun isValidWildcardTopic(topic: String): Boolean {
-        val parts = topic.split('/')
-
-        // Check multi-level wildcard (#) usage
-        val hashIndex = parts.indexOf("#")
-        if (hashIndex != -1 && hashIndex != parts.lastIndex) {
+        // Basic MQTT topic validation
+        if (topic.contains('#') && !topic.endsWith('#')) {
             return false
         }
 
-        // Check single-level wildcard (+) usage
-        parts.forEachIndexed { index, part ->
-            if (part == "+" || part == "#") {
-                return@forEachIndexed
+        val segments = topic.split('/')
+        for (segment in segments) {
+            if (segment.contains('#') && segment != "#") {
+                return false
             }
-            if (part.contains('+') || part.contains('#')) {
+            if (segment.contains('+') && segment != "+") {
                 return false
             }
         }
@@ -101,13 +105,10 @@ class MQTTEventHelper(private val context: Context) : TaskerPluginConfigHelper<M
         return true
     }
 
-    override fun getDefaultInput(): TaskerInput<MQTTEventInput> = TaskerInput(
-        MQTTEventInput(
-            clientId = MQTTEventInput.generateClientId(),
-            cleanSession = true,
-            qos = 1
-        )
-    )
+    override fun addDefaultValues(input: TaskerInput<MQTTEventInput>) {
+        super.addDefaultValues(input)
+        // Add any default values if needed
+    }
 
     companion object {
         private const val TAG = "MQTTEventHelper"

@@ -21,13 +21,17 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.min
 import kotlin.math.pow
+import java.net.URI
+import javax.net.ssl.SSLSocketFactory
 
 class MQTTClient(
     private val context: Context,
     private val brokerUrl: String,
-    private val port: String,
+    private val port: Int,
     private val clientId: String,
     private val useSsl: Boolean,
+    private val username: String? = null,
+    private val password: String? = null,
     private val onConnectionLost: ((Throwable?) -> Unit)? = null,
     private val onMessageArrived: ((String, String) -> Unit)? = null,
     private val onDeliveryComplete: ((IMqttDeliveryToken?) -> Unit)? = null
@@ -41,6 +45,7 @@ class MQTTClient(
     private var mqttClient: MqttAsyncClient? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var _isConnected = false
+    private val callbacks = mutableMapOf<String, (String, String) -> Unit>()
 
     private val connectivityManager by lazy {
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -80,7 +85,7 @@ class MQTTClient(
                     if (topic != null && message != null) {
                         val messageStr = String(message.payload)
                         Log.d(TAG, "Message received: $messageStr on topic: $topic")
-                        onMessageArrived?.invoke(topic, messageStr)
+                        callbacks[topic]?.invoke(topic, messageStr)
                     }
                 }
 
@@ -121,38 +126,47 @@ class MQTTClient(
     }
 
     suspend fun connect(
-        brokerUrl: String,
-        port: Int,
-        clientId: String? = null,
-        useSsl: Boolean = false,
         username: String? = null,
-        password: String? = null
+        password: String? = null,
+        useSsl: Boolean = false,
+        maxReconnectDelay: Long = 30000
     ) = withContext(Dispatchers.IO) {
-        suspendCancellableCoroutine<Unit> { continuation ->
+        suspendCancellableCoroutine { continuation ->
             try {
-                val serverUri = if (useSsl) {
-                    "ssl://$brokerUrl:$port"
-                } else {
-                    "tcp://$brokerUrl:$port"
-                }
-
-                val finalClientId = clientId ?: "cogwyrm_${System.currentTimeMillis()}"
-
-                mqttClient = MqttAsyncClient(
-                    serverUri,
-                    finalClientId,
-                    MemoryPersistence()
-                )
-
                 val options = MqttConnectOptions().apply {
-                    isCleanSession = true
-                    connectionTimeout = 30
-                    keepAliveInterval = 60
-                    if (username != null && password != null) {
+                    isAutomaticReconnect = true
+                    maxReconnectDelay = maxReconnectDelay
+                    if (username?.isNotEmpty() == true && password?.isNotEmpty() == true) {
                         this.userName = username
                         this.password = password.toCharArray()
                     }
+                    isCleanSession = true
+                    if (useSsl) {
+                        socketFactory = SSLSocketFactory.getDefault()
+                    }
                 }
+                val serverURI = buildServerURI()
+                mqttClient = MqttAsyncClient(serverURI, clientId, MemoryPersistence())
+
+                mqttClient?.setCallback(object : MqttCallback {
+                    override fun connectionLost(cause: Throwable?) {
+                        onConnectionLost?.invoke(cause)
+                        _isConnected = false
+                        if (!isRetrying) {
+                            reconnect()
+                        }
+                    }
+
+                    override fun messageArrived(topic: String, message: MqttMessage) {
+                        val payload = String(message.payload)
+                        callbacks[topic]?.invoke(topic, payload)
+                        onMessageArrived?.invoke(topic, payload)
+                    }
+
+                    override fun deliveryComplete(token: IMqttDeliveryToken?) {
+                        onDeliveryComplete?.invoke(token)
+                    }
+                })
 
                 mqttClient?.connect(options, null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
@@ -161,8 +175,9 @@ class MQTTClient(
                     }
 
                     override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                        val error = exception ?: Exception("Failed to connect")
-                        continuation.resumeWithException(error)
+                        continuation.resumeWithException(
+                            MQTTException("Failed to connect to broker", exception)
+                        )
                     }
                 })
             } catch (e: Exception) {
@@ -172,108 +187,54 @@ class MQTTClient(
     }
 
     suspend fun disconnect() = withContext(Dispatchers.IO) {
-        suspendCancellableCoroutine<Unit> { continuation ->
-            try {
-                mqttClient?.disconnect(null, object : IMqttActionListener {
-                    override fun onSuccess(asyncActionToken: IMqttToken?) {
-                        _isConnected = false
-                        continuation.resume(Unit)
-                    }
-
-                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                        val error = exception ?: Exception("Failed to disconnect")
-                        continuation.resumeWithException(error)
-                    }
-                })
-            } catch (e: Exception) {
-                continuation.resumeWithException(e)
-            }
+        try {
+            mqttClient?.disconnect()?.waitForCompletion()
+            mqttClient?.close()
+            mqttClient = null
+            callbacks.clear()
+        } catch (e: Exception) {
+            throw MQTTException("Failed to disconnect from broker", e)
         }
     }
 
-    suspend fun publish(
-        topic: String,
-        message: String,
-        qos: Int = 1,
-        retained: Boolean = false
-    ) = withContext(Dispatchers.IO) {
-        suspendCancellableCoroutine<Unit> { continuation ->
-            try {
-                mqttClient?.publish(
-                    topic,
-                    MqttMessage(message.toByteArray()).apply {
-                        this.qos = qos
-                        isRetained = retained
-                    },
-                    null,
-                    object : IMqttActionListener {
-                        override fun onSuccess(asyncActionToken: IMqttToken?) {
-                            continuation.resume(Unit)
-                        }
-
-                        override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                            val error = exception ?: Exception("Failed to publish message")
-                            continuation.resumeWithException(error)
-                        }
-                    }
-                )
-            } catch (e: Exception) {
-                continuation.resumeWithException(e)
-            }
-        }
-    }
-
-    suspend fun subscribe(
-        topic: String,
-        qos: Int = 1,
-        callback: (String, String) -> Unit
-    ) = withContext(Dispatchers.IO) {
-        suspendCancellableCoroutine<Unit> { continuation ->
-            try {
-                mqttClient?.subscribe(topic, qos, null, object : IMqttActionListener {
-                    override fun onSuccess(asyncActionToken: IMqttToken?) {
-                        mqttClient?.setCallback(object : MqttCallback {
-                            override fun connectionLost(cause: Throwable?) {
-                                _isConnected = false
-                            }
-
-                            override fun messageArrived(topic: String, message: MqttMessage) {
-                                callback(topic, String(message.payload))
-                            }
-
-                            override fun deliveryComplete(token: IMqttDeliveryToken?) {}
-                        })
-                        continuation.resume(Unit)
-                    }
-
-                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                        val error = exception ?: Exception("Failed to subscribe")
-                        continuation.resumeWithException(error)
-                    }
-                })
-            } catch (e: Exception) {
-                continuation.resumeWithException(e)
-            }
+    suspend fun subscribe(topic: String, qos: Int = 0, callback: (String, String) -> Unit) = withContext(Dispatchers.IO) {
+        try {
+            callbacks[topic] = callback
+            mqttClient?.subscribe(topic, qos)?.waitForCompletion()
+        } catch (e: Exception) {
+            throw MQTTException("Failed to subscribe to topic: $topic", e)
         }
     }
 
     suspend fun unsubscribe(topic: String) = withContext(Dispatchers.IO) {
-        suspendCancellableCoroutine { continuation ->
-            try {
-                mqttClient?.unsubscribe(topic, null, object : IMqttActionListener {
-                    override fun onSuccess(asyncActionToken: IMqttToken?) {
-                        continuation.resume(Unit)
-                    }
-
-                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                        val error = exception ?: Exception("Failed to unsubscribe")
-                        continuation.resumeWithException(error)
-                    }
-                })
-            } catch (e: Exception) {
-                continuation.resumeWithException(e)
-            }
+        try {
+            mqttClient?.unsubscribe(topic)?.waitForCompletion()
+            callbacks.remove(topic)
+        } catch (e: Exception) {
+            throw MQTTException("Failed to unsubscribe from topic: $topic", e)
         }
+    }
+
+    suspend fun publish(topic: String, message: String, qos: Int = 0, retained: Boolean = false) = withContext(Dispatchers.IO) {
+        try {
+            val mqttMessage = MqttMessage(message.toByteArray()).apply {
+                this.qos = qos
+                this.isRetained = retained
+            }
+            mqttClient?.publish(topic, mqttMessage)?.waitForCompletion()
+        } catch (e: Exception) {
+            throw MQTTException("Failed to publish message to topic: $topic", e)
+        }
+    }
+
+    private fun buildServerURI(): String {
+        val protocol = if (useSsl) "ssl" else "tcp"
+        val uri = URI(if (brokerUrl.startsWith("tcp://") || brokerUrl.startsWith("ssl://")) {
+            brokerUrl
+        } else {
+            "$protocol://$brokerUrl"
+        })
+        return "${uri.scheme}://${uri.host}:$port"
     }
 
     fun isConnected() = _isConnected
@@ -282,3 +243,5 @@ class MQTTClient(
         private const val TAG = "MQTTClient"
     }
 }
+
+class MQTTException(message: String, cause: Throwable? = null) : Exception(message, cause)

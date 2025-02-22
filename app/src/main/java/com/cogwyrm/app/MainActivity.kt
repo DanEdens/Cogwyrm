@@ -2,39 +2,39 @@ package com.cogwyrm.app
 
 import android.os.Bundle
 import android.util.Log
-import android.view.View
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.cogwyrm.app.mqtt.MQTTService
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var brokerUrlInput: EditText
-    private lateinit var portInput: EditText
-    private lateinit var topicInput: EditText
-    private lateinit var messageInput: EditText
-    private lateinit var connectButton: Button
-    private lateinit var publishButton: Button
-    private lateinit var subscribeButton: Button
-    private lateinit var statusText: TextView
+    private lateinit var brokerUrlInput: TextInputEditText
+    private lateinit var portInput: TextInputEditText
+    private lateinit var topicInput: TextInputEditText
+    private lateinit var messageInput: TextInputEditText
+    private lateinit var connectButton: MaterialButton
+    private lateinit var publishButton: MaterialButton
+    private lateinit var subscribeButton: MaterialButton
+    private lateinit var connectionStatusText: TextInputEditText
     private lateinit var mqttService: MQTTService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_mqtt_event_config)
 
         // Initialize views
-        brokerUrlInput = findViewById(R.id.broker_url_input)
-        portInput = findViewById(R.id.port_input)
-        topicInput = findViewById(R.id.topic_input)
-        messageInput = findViewById(R.id.message_input)
-        connectButton = findViewById(R.id.connect_button)
-        publishButton = findViewById(R.id.publish_button)
-        subscribeButton = findViewById(R.id.subscribe_button)
-        statusText = findViewById(R.id.status_text)
+        brokerUrlInput = findViewById(R.id.brokerUrlInput)
+        portInput = findViewById(R.id.portInput)
+        topicInput = findViewById(R.id.topicInput)
+        messageInput = findViewById(R.id.messageInput)
+        connectButton = findViewById(R.id.testConnectionButton)
+        publishButton = findViewById(R.id.publishButton)
+        subscribeButton = findViewById(R.id.subscribeButton)
+        connectionStatusText = findViewById(R.id.connectionStatusText)
 
         // Set default values
         brokerUrlInput.setText("test.mosquitto.org")
@@ -58,7 +58,7 @@ class MainActivity : AppCompatActivity() {
         connectButton.text = if (isConnected) "Disconnect" else "Connect"
         publishButton.isEnabled = isConnected
         subscribeButton.isEnabled = isConnected
-        statusText.text = if (isConnected) "Connected" else "Disconnected"
+        connectionStatusText.setText(if (isConnected) "Connected" else "Disconnected")
     }
 
     private fun onConnectClick() {
@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity() {
                     updateConnectionState()
                 } catch (e: Exception) {
                     Log.e(TAG, "Disconnect error", e)
-                    statusText.text = "Error: ${e.message}"
+                    showError("Error: ${e.message}")
                 }
             }
         } else {
@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity() {
                     updateConnectionState()
                 } catch (e: Exception) {
                     Log.e(TAG, "Connection error", e)
-                    statusText.text = "Error: ${e.message}"
+                    showError("Error: ${e.message}")
                 }
             }
         }
@@ -97,10 +97,10 @@ class MainActivity : AppCompatActivity() {
                     topic = topicInput.text.toString(),
                     message = messageInput.text.toString()
                 )
-                statusText.text = "Message published"
+                connectionStatusText.setText("Message published")
             } catch (e: Exception) {
                 Log.e(TAG, "Publish error", e)
-                statusText.text = "Error: ${e.message}"
+                showError("Error: ${e.message}")
             }
         }
     }
@@ -114,15 +114,19 @@ class MainActivity : AppCompatActivity() {
                 ) { topic, message ->
                     Log.d(TAG, "Received message on topic $topic: $message")
                     runOnUiThread {
-                        statusText.text = "Last message: $topic - $message"
+                        connectionStatusText.setText("Last message: $topic - $message")
                     }
                 }
-                statusText.text = "Subscribed to topic"
+                connectionStatusText.setText("Subscribed to topic")
             } catch (e: Exception) {
                 Log.e(TAG, "Subscribe error", e)
-                statusText.text = "Error: ${e.message}"
+                showError("Error: ${e.message}")
             }
         }
+    }
+
+    private fun showError(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroy() {
