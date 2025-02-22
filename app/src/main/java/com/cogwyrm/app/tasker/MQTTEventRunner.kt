@@ -8,7 +8,7 @@ import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultCondition
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultConditionSatisfied
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultConditionUnsatisfied
 
-class MQTTEventRunner : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput, MQTTEventOutput>() {
+class MQTTEventRunner : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput>() {
     override fun getSatisfiedCondition(
         context: Context,
         input: TaskerInput<MQTTEventInput>,

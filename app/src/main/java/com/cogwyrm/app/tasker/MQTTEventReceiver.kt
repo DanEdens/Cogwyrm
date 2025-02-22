@@ -10,16 +10,21 @@ import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultCondition
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultConditionSatisfied
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultConditionUnsatisfied
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttToken
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class MQTTEventReceiver : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput, MQTTEventOutput>() {
+class MQTTEventReceiver : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput>() {
     companion object {
         private const val TAG = "MQTTEventReceiver"
         private val activeSubscriptions = ConcurrentHashMap<String, MQTTSubscription>()
         private var appContext: Context? = null
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         data class MQTTSubscription(
             val client: MQTTClient,
@@ -79,17 +84,16 @@ class MQTTEventReceiver : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTE
             if (subscription.refCount.incrementAndGet() > 1) {
                 // Add new topic to existing subscription if not already subscribed
                 if (subscription.topics.add(mqttInput.topic)) {
-                    subscription.client.subscribe(mqttInput.topic, mqttInput.qos, object : IMqttActionListener {
-                        override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    scope.launch {
+                        try {
+                            subscription.client.subscribe(mqttInput.topic, mqttInput.qos)
                             Log.d(TAG, "Successfully added topic ${mqttInput.topic} to existing subscription")
-                        }
-
-                        override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                            Log.e(TAG, "Failed to add topic ${mqttInput.topic} to existing subscription", exception)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to add topic ${mqttInput.topic} to existing subscription", e)
                             subscription.topics.remove(mqttInput.topic)
                             subscription.refCount.decrementAndGet()
                         }
-                    })
+                    }
                 }
                 Log.d(TAG, "Reusing existing subscription for $subscriptionKey (ref count: ${subscription.refCount.get()})")
                 return
@@ -120,25 +124,17 @@ class MQTTEventReceiver : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTE
                 sub.topics.add(mqttInput.topic)
             }
 
-            client.connect(object : IMqttActionListener {
-                override fun onSuccess(asyncActionToken: IMqttToken?) {
-                    client.subscribe(mqttInput.topic, mqttInput.qos, object : IMqttActionListener {
-                        override fun onSuccess(asyncActionToken: IMqttToken?) {
-                            Log.d(TAG, "Successfully subscribed to ${mqttInput.topic}")
-                            activeSubscriptions[subscriptionKey] = subscription
-                        }
-
-                        override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                            Log.e(TAG, "Failed to subscribe to ${mqttInput.topic}", exception)
-                            client.disconnect()
-                        }
-                    })
+            scope.launch {
+                try {
+                    client.connect()
+                    client.subscribe(mqttInput.topic, mqttInput.qos)
+                    activeSubscriptions[subscriptionKey] = subscription
+                    Log.d(TAG, "Successfully subscribed to ${mqttInput.topic}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to connect or subscribe", e)
+                    client.disconnect()
                 }
-
-                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                    Log.e(TAG, "Failed to connect for subscription", exception)
-                }
-            })
+            }
 
             Log.d(TAG, "Created new subscription for: $subscriptionKey")
         } catch (e: Exception) {
@@ -153,12 +149,14 @@ class MQTTEventReceiver : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTE
         activeSubscriptions[subscriptionKey]?.let { subscription ->
             if (subscription.refCount.decrementAndGet() <= 0) {
                 // Last reference removed, clean up subscription
-                try {
-                    subscription.client.disconnect()
-                    activeSubscriptions.remove(subscriptionKey)
-                    Log.d(TAG, "Removed subscription: $subscriptionKey")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error cleaning up MQTT subscription", e)
+                scope.launch {
+                    try {
+                        subscription.client.disconnect()
+                        activeSubscriptions.remove(subscriptionKey)
+                        Log.d(TAG, "Removed subscription: $subscriptionKey")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error cleaning up MQTT subscription", e)
+                    }
                 }
             } else {
                 // Remove topic from subscription if no other conditions use it
