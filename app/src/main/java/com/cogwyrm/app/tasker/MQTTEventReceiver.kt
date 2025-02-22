@@ -1,15 +1,24 @@
 package com.cogwyrm.app.tasker
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
 import com.cogwyrm.app.mqtt.MQTTClient
 import com.cogwyrm.app.utils.ErrorHandler
 import kotlinx.coroutines.*
 import org.eclipse.paho.client.mqttv3.MqttException
 import java.util.concurrent.ConcurrentHashMap
+import com.joaomgcd.taskerpluginlibrary.action.TaskerPluginRunnerAction
+import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
+import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
+import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultError
+import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSucess
+import com.cogwyrm.app.mqtt.MQTTService
+import com.cogwyrm.app.R
 
-class MQTTEventReceiver : TaskerPluginReceiver<MQTTEventInput, MQTTEventOutput>() {
+class MQTTEventReceiver : TaskerPluginRunnerAction<MQTTEventInput, MQTTEventOutput>() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val activeSubscriptions = ConcurrentHashMap<String, MQTTSubscription>()
 
@@ -20,68 +29,38 @@ class MQTTEventReceiver : TaskerPluginReceiver<MQTTEventInput, MQTTEventOutput>(
         val client: MQTTClient
     )
 
-    override fun onReceive(context: Context, input: MQTTEventInput): MQTTEventOutput {
-        val subscription = activeSubscriptions[input.topic]
-        if (subscription == null) {
-            // New subscription
-            scope.launch {
-                try {
-                    val client = MQTTClient(
-                        context = context,
-                        brokerUrl = input.brokerUrl,
-                        port = input.port.toString(),
-                        clientId = input.clientId ?: "cogwyrm_${System.currentTimeMillis()}",
-                        useSsl = input.useSsl,
-                        onMessageArrived = { topic, message ->
-                            handleMessage(topic, message, context)
-                        }
-                    )
-
-                    activeSubscriptions[input.topic] = MQTTSubscription(
-                        topic = input.topic,
-                        input = input,
-                        context = context,
-                        client = client
-                    )
-
-                    try {
-                        client.connect(
-                            input.brokerUrl,
-                            input.port,
-                            input.clientId,
-                            input.useSsl,
-                            input.username,
-                            input.password
-                        )
-
-                        client.subscribe(input.topic, input.qos) { topic, message ->
-                            handleMessage(topic, message, context)
-                        }
-                    } catch (e: MqttException) {
-                        ErrorHandler.handleMqttException(context, e)
-                        removeSubscription(input.topic)
-                    } catch (e: Exception) {
-                        val error = CogwyrmError.ConnectionError(
-                            context.getString(R.string.error_connection_failed),
-                            e
-                        )
-                        ErrorHandler.handleError(context, error)
-                        removeSubscription(input.topic)
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error setting up MQTT subscription", e)
-                    val error = CogwyrmError.ConfigurationError(
-                        context.getString(R.string.error_configuration, e.message)
-                    )
-                    ErrorHandler.handleError(context, error)
-                }
+    override fun run(context: Context, input: TaskerInput<MQTTEventInput>): TaskerPluginResult<MQTTEventOutput> {
+        return try {
+            val config = input.regular
+            if (!config.validateInput()) {
+                return TaskerPluginResultError(context.getString(R.string.error_invalid_input))
             }
-        }
 
-        return MQTTEventOutput(
-            topic = input.topic,
-            message = "" // Empty message since this is just setup
-        )
+            val client = MQTTClient(
+                brokerUrl = config.brokerUrl,
+                port = config.port,
+                useSSL = config.useSSL,
+                username = config.username,
+                password = config.password,
+                clientId = config.clientId
+            )
+
+            val intent = Intent(context, MQTTService::class.java).apply {
+                putExtra("brokerUrl", config.brokerUrl)
+                putExtra("port", config.port)
+                putExtra("useSSL", config.useSSL)
+                putExtra("username", config.username)
+                putExtra("password", config.password)
+                putExtra("clientId", config.clientId)
+                putExtra("topic", config.topic)
+                putExtra("qos", config.qos)
+            }
+
+            context.startService(intent)
+            TaskerPluginResultSucess()
+        } catch (e: Exception) {
+            TaskerPluginResultError(e.message ?: context.getString(R.string.error_unknown))
+        }
     }
 
     private fun handleMessage(topic: String, message: String, context: Context) {

@@ -2,28 +2,18 @@ package com.cogwyrm.app.tasker
 
 import android.content.Context
 import com.joaomgcd.taskerpluginlibrary.condition.TaskerPluginRunnerConditionEvent
-import com.joaomgcd.taskerpluginlibrary.condition.TaskerPluginResultCondition
-import com.joaomgcd.taskerpluginlibrary.condition.TaskerPluginResultConditionSatisfied
-import com.joaomgcd.taskerpluginlibrary.condition.TaskerPluginResultConditionUnsatisfied
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
+import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultCondition
+import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultConditionSatisfied
+import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultConditionUnsatisfied
 
-class MQTTEventRunner : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput, MQTTEventUpdate>() {
-    override fun getSatisfiedCondition(
-        context: Context,
-        input: TaskerInput<MQTTEventInput>,
-        update: MQTTEventUpdate?
-    ): TaskerPluginResultCondition<MQTTEventOutput> {
-        if (update == null) {
-            return TaskerPluginResultConditionUnsatisfied()
+class MQTTEventRunner : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput>() {
+    override fun getSatisfiedCondition(context: Context, input: MQTTEventInput, update: MQTTEventOutput?): TaskerPluginResultCondition<MQTTEventOutput> {
+        return if (update != null) {
+            TaskerPluginResultConditionSatisfied(context, update)
+        } else {
+            TaskerPluginResultConditionUnsatisfied()
         }
-
-        return TaskerPluginResultConditionSatisfied(
-            MQTTEventOutput(
-                topic = update.topic,
-                message = update.message,
-                timestamp = update.timestamp
-            )
-        )
     }
 }
 

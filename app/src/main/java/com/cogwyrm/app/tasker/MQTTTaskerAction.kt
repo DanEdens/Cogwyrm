@@ -1,46 +1,50 @@
 package com.cogwyrm.app.tasker
 
-import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
-import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigHelper
+import android.content.Context
+import android.os.Bundle
+import com.joaomgcd.taskerpluginlibrary.action.TaskerPluginRunnerAction
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
-import com.joaomgcd.taskerpluginlibrary.SimpleResult
-import com.joaomgcd.taskerpluginlibrary.SimpleResultError
-import com.joaomgcd.taskerpluginlibrary.SimpleResultSuccess
+import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
+import com.cogwyrm.app.utils.CogwyrmError
+import kotlinx.parcelize.Parcelize
+import android.os.Parcelable
 
-class MQTTTaskerAction(config: TaskerPluginConfig<MQTTActionInput>) : TaskerPluginConfigHelper<MQTTActionInput, Unit, Runner>(config) {
-    override val inputClass = MQTTActionInput::class.java
-    override val outputClass = Unit::class.java
-    override val runnerClass = Runner::class.java
+class MQTTActionRunner : TaskerPluginRunnerAction<MQTTEventInput, MQTTEventOutput>() {
+    override fun run(context: Context, input: TaskerInput<MQTTEventInput>): TaskerPluginResult<MQTTEventOutput> {
+        return try {
+            // TODO: Implement actual MQTT action
+            TaskerPluginResult.Success(MQTTEventOutput("", "", System.currentTimeMillis()))
+        } catch (e: CogwyrmError) {
+            TaskerPluginResult.Error(e.message ?: "Unknown error")
+        }
+    }
+}
 
-    override fun addToStringBlurb(input: TaskerInput<MQTTActionInput>, blurbBuilder: StringBuilder) {
-        blurbBuilder.append("Send MQTT message to ${input.regular.topic}@${input.regular.brokerUrl}")
+@Parcelize
+data class MQTTEventInput(
+    val brokerUrl: String,
+    val port: Int,
+    val clientId: String,
+    val topic: String,
+    val qos: Int,
+    val useSsl: Boolean,
+    val username: String?,
+    val password: String?
+) : TaskerPluginInput, Parcelable {
+    override fun validate(): Boolean {
+        return brokerUrl.isNotEmpty() && port > 0 && topic.isNotEmpty()
     }
 
-    override fun isInputValid(input: TaskerInput<MQTTActionInput>): SimpleResult {
-        val errors = mutableListOf<String>()
-
-        with(input.regular) {
-            if (brokerUrl.isBlank() || !brokerUrl.matches(Regex("^[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"))) {
-                errors.add("Invalid broker URL")
-            }
-
-            if (port.isBlank() || port.toIntOrNull() !in 1..65535) {
-                errors.add("Port must be between 1 and 65535")
-            }
-
-            if (topic.isBlank() || !topic.matches(Regex("^[a-zA-Z0-9/#+]+$"))) {
-                errors.add("Invalid topic format")
-            }
-
-            if (message.isBlank()) {
-                errors.add("Message cannot be empty")
-            }
-        }
-
-        return if (errors.isEmpty()) {
-            SimpleResultSuccess()
-        } else {
-            SimpleResultError(IllegalArgumentException(errors.joinToString("\n")))
+    override fun toBundle(): Bundle {
+        return Bundle().apply {
+            putString("brokerUrl", brokerUrl)
+            putInt("port", port)
+            putString("clientId", clientId)
+            putString("topic", topic)
+            putInt("qos", qos)
+            putBoolean("useSsl", useSsl)
+            putString("username", username)
+            putString("password", password)
         }
     }
 }

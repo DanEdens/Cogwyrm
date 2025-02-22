@@ -11,6 +11,7 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.eclipse.paho.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.*
@@ -127,7 +128,7 @@ class MQTTClient(
         username: String? = null,
         password: String? = null
     ) = withContext(Dispatchers.IO) {
-        suspendCancellableCoroutine { continuation ->
+        suspendCancellableCoroutine<Unit> { continuation ->
             try {
                 val serverUri = if (useSsl) {
                     "ssl://$brokerUrl:$port"
@@ -171,7 +172,7 @@ class MQTTClient(
     }
 
     suspend fun disconnect() = withContext(Dispatchers.IO) {
-        suspendCancellableCoroutine { continuation ->
+        suspendCancellableCoroutine<Unit> { continuation ->
             try {
                 mqttClient?.disconnect(null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
@@ -196,7 +197,7 @@ class MQTTClient(
         qos: Int = 1,
         retained: Boolean = false
     ) = withContext(Dispatchers.IO) {
-        suspendCancellableCoroutine { continuation ->
+        suspendCancellableCoroutine<Unit> { continuation ->
             try {
                 mqttClient?.publish(
                     topic,
@@ -227,7 +228,7 @@ class MQTTClient(
         qos: Int = 1,
         callback: (String, String) -> Unit
     ) = withContext(Dispatchers.IO) {
-        suspendCancellableCoroutine { continuation ->
+        suspendCancellableCoroutine<Unit> { continuation ->
             try {
                 mqttClient?.subscribe(topic, qos, null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
