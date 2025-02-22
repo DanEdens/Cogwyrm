@@ -56,16 +56,22 @@
         <activity
             android:name=".tasker.MQTTConfigActivity"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
-            android:label="MQTT Publish">
+            android:icon="@drawable/ic_mqtt_publish"
+            android:label="@string/tasker_mqtt_publish_label"
+            android:description="@string/tasker_mqtt_publish_desc">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
+            <meta-data
+                android:name="com.twofortyfouram.locale.intent.extra.BLURB"
+                android:value="@string/tasker_mqtt_publish_desc" />
         </activity>
 
         <receiver
             android:name=".tasker.MQTTActionReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:icon="@drawable/ic_mqtt_publish"
+            android:label="@string/tasker_mqtt_publish_label">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.FIRE_SETTING" />
             </intent-filter>
@@ -75,18 +81,25 @@
         <activity
             android:name=".tasker.MQTTEventConfigActivity"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
-            android:label="MQTT Event">
+            android:icon="@drawable/ic_mqtt_event"
+            android:label="@string/tasker_mqtt_event_label"
+            android:description="@string/tasker_mqtt_event_desc">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_CONDITION" />
             </intent-filter>
+            <meta-data
+                android:name="com.twofortyfouram.locale.intent.extra.BLURB"
+                android:value="@string/tasker_mqtt_event_desc" />
         </activity>
 
         <receiver
             android:name=".tasker.MQTTEventReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:icon="@drawable/ic_mqtt_event"
+            android:label="@string/tasker_mqtt_event_label">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.QUERY_CONDITION" />
+                <action android:name="com.twofortyfouram.locale.intent.action.FIRE_SETTING" />
             </intent-filter>
         </receiver>
     </application>

@@ -12,4 +12,10 @@
     <string name="label_topic">Topic</string>
     <string name="label_message">Message</string>
     <string name="label_use_ssl">Use SSL</string>
+
+    <!-- Tasker Plugin Labels -->
+    <string name="tasker_mqtt_publish_label">MQTT Publish</string>
+    <string name="tasker_mqtt_publish_desc">Publish a message to an MQTT broker</string>
+    <string name="tasker_mqtt_event_label">MQTT Event</string>
+    <string name="tasker_mqtt_event_desc">Trigger when an MQTT message is received</string>
 </resources>
