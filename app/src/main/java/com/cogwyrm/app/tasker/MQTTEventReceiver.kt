@@ -5,8 +5,6 @@ import android.util.Log
 import com.cogwyrm.app.mqtt.MQTTClient
 import com.cogwyrm.app.mqtt.TopicUtils
 import com.joaomgcd.taskerpluginlibrary.condition.TaskerPluginRunnerConditionEvent
-import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
-import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigHelper
 import com.joaomgcd.taskerpluginlibrary.extensions.requestQuery
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultCondition
@@ -17,16 +15,11 @@ import org.eclipse.paho.client.mqttv3.IMqttToken
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class MQTTEventHelper(config: TaskerPluginConfig<MQTTEventInput>) : TaskerPluginConfigHelper<MQTTEventInput, MQTTEventOutput, MQTTEventRunner>(config) {
-    override val runnerClass = MQTTEventRunner::class.java
-    override val inputClass = MQTTEventInput::class.java
-    override val outputClass = MQTTEventOutput::class.java
-}
-
 class MQTTEventReceiver : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput, MQTTEventOutput>() {
     companion object {
         private const val TAG = "MQTTEventReceiver"
         private val activeSubscriptions = ConcurrentHashMap<String, MQTTSubscription>()
+        private var appContext: Context? = null
 
         data class MQTTSubscription(
             val client: MQTTClient,
@@ -48,7 +41,9 @@ class MQTTEventReceiver : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTE
             )
 
             // Notify Tasker about the event
-            requestQuery(MQTTEventReceiver::class.java, update)
+            appContext?.let { context ->
+                requestQuery(context, update)
+            }
         }
     }
 
@@ -57,6 +52,9 @@ class MQTTEventReceiver : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTE
         input: TaskerInput<MQTTEventInput>,
         update: MQTTEventOutput?
     ): TaskerPluginResultCondition<MQTTEventOutput> {
+        // Store context for event handling
+        appContext = context.applicationContext
+
         // If no update or topic doesn't match pattern, condition not satisfied
         if (update == null || !TopicUtils.topicMatchesPattern(input.regular.topic, update.topic)) {
             return TaskerPluginResultConditionUnsatisfied()
