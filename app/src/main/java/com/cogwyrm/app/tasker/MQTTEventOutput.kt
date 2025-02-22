@@ -1,27 +1,22 @@
 package com.cogwyrm.app.tasker
 
 import android.os.Bundle
+import android.os.Parcelable
+import com.joaomgcd.taskerpluginlibrary.output.TaskerOutputObject
+import com.joaomgcd.taskerpluginlibrary.output.TaskerOutputVariable
+import kotlinx.parcelize.Parcelize
 
-data class MQTTEventOutput(
-    val topic: String,
-    val message: String,
-    val timestamp: Long = System.currentTimeMillis()
-) : TaskerPluginOutput {
-    override fun toBundle(): Bundle {
+@TaskerOutputObject
+class MQTTEventOutput(
+    @get:TaskerOutputVariable("message", "Message", "str") var message: String = "",
+    @get:TaskerOutputVariable("topic", "Topic", "str") var topic: String = "",
+    @get:TaskerOutputVariable("timestamp", "Timestamp", "int") var timestamp: Long = 0
+) : Parcelable {
+    fun toBundle(): Bundle {
         return Bundle().apply {
-            putString("topic", topic)
             putString("message", message)
+            putString("topic", topic)
             putLong("timestamp", timestamp)
-        }
-    }
-
-    companion object {
-        fun fromBundle(bundle: Bundle): MQTTEventOutput {
-            return MQTTEventOutput(
-                topic = bundle.getString("topic", ""),
-                message = bundle.getString("message", ""),
-                timestamp = bundle.getLong("timestamp", System.currentTimeMillis())
-            )
         }
     }
 }
