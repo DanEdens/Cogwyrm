@@ -1,0 +1,3 @@
+[submodule "taskersample"]
+	path = taskersample
+	url = https://github.com/joaomgcd/TaskerPluginSample.git
