@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-class MQTTService : Service() {
+class MQTTService(private val context: Context? = null) : Service() {
     private val binder = LocalBinder()
     private var mqttClient: MqttAsyncClient? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

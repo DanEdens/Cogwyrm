@@ -1,7 +1,7 @@
 # Cogwyrm MQTT Tasker Plugin - Project TODO
 
 ## Current Status
-The project is a Tasker plugin for MQTT communication, allowing automation of MQTT messages through Tasker. Currently, we have basic structure but several critical issues need addressing.
+The project is a Tasker plugin for MQTT communication, allowing automation of MQTT messages through Tasker. We have made significant progress in refactoring the code to align with best practices from the Tasker Plugin Sample project.
 
 ### Components Overview
 - `MainActivity`: Basic MQTT client UI
@@ -10,7 +10,49 @@ The project is a Tasker plugin for MQTT communication, allowing automation of MQ
 - `MQTTActionReceiver`: Tasker action plugin for publishing messages
 - `MQTTEventReceiver`: Tasker event plugin for MQTT message triggers (✓ Enhanced with robust subscription management)
 - `MQTTConfigActivity`: Tasker configuration UI for publishing
-- `MQTTEventConfigActivity`: Tasker configuration UI for triggers (✓ Enhanced with validation and testing)
+- `MQTTEventConfigActivity`: Tasker configuration UI for triggers (✓ Refactored to use base class)
+
+## Remaining Work
+
+### 1. Refactor MQTTConfigActivity
+- [ ] Update MQTTConfigActivity to extend TaskerPluginConfigActivity base class
+- [ ] Implement MQTTActionHelper for Tasker-specific setup and validation
+- [ ] Migrate to view binding
+- [ ] Update input/output handling to use TaskerInput and TaskerPluginResult
+
+### 2. Refactor MQTTActionReceiver
+- [ ] Update MQTTActionReceiver to align with new TaskerPluginReceiver structure
+- [ ] Implement proper error handling and reporting
+- [ ] Ensure proper integration with refactored MQTTConfigActivity and MQTTActionHelper
+
+### 3. Refactor MQTTEventReceiver
+- [ ] Update MQTTEventReceiver to align with new TaskerPluginReceiver structure
+- [ ] Ensure proper integration with refactored MQTTEventConfigActivity and MQTTEventHelper
+- [ ] Verify robust subscription management and error handling
+
+### 4. Code Cleanup
+- [ ] Organize plugin components into separate packages (action, event)
+- [ ] Remove any remaining references to old Tasker Plugin Library
+- [ ] Update import statements and resolve any remaining compilation errors
+- [ ] Perform final code review to ensure consistency and adherence to best practices
+
+### 5. Testing
+- [ ] Perform thorough manual testing of all plugin functionality
+- [ ] Test various configuration scenarios and error conditions
+- [ ] Verify proper integration between all components
+- [ ] Perform final QA testing before release
+
+## Next Steps
+1. Refactor MQTTConfigActivity and MQTTActionReceiver
+2. Refactor MQTTEventReceiver
+3. Perform code cleanup and organization
+4. Conduct thorough testing and QA
+
+## Notes
+- We have made excellent progress in refactoring core components
+- Remaining work is focused on completing the refactoring and ensuring proper integration
+- Thorough testing will be critical to verify the stability and functionality of the plugin
+- We should continue to reference the Tasker Plugin Sample project for guidance and best practices
 
 ## Critical Issues
 

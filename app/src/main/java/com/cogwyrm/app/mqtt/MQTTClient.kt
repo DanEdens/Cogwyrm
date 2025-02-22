@@ -8,11 +8,13 @@ import android.net.NetworkRequest
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
 import org.eclipse.paho.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.*
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -35,6 +37,9 @@ class MQTTClient(
     private val handler = Handler(Looper.getMainLooper())
     private var isRetrying = false
     private var pendingReconnect = false
+    private var mqttClient: MqttAsyncClient? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var _isConnected = false
 
     private val connectivityManager by lazy {
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -114,50 +119,73 @@ class MQTTClient(
         }, delay)
     }
 
-    suspend fun connect() = withContext(Dispatchers.IO) {
+    suspend fun connect(
+        brokerUrl: String,
+        port: Int,
+        clientId: String? = null,
+        useSsl: Boolean = false,
+        username: String? = null,
+        password: String? = null
+    ) = withContext(Dispatchers.IO) {
         suspendCancellableCoroutine { continuation ->
             try {
-                val options = MqttConnectOptions().apply {
-                    isCleanSession = true
-                    keepAliveInterval = 60
-                    connectionTimeout = 30
-                    isAutomaticReconnect = true
+                val serverUri = if (useSsl) {
+                    "ssl://$brokerUrl:$port"
+                } else {
+                    "tcp://$brokerUrl:$port"
                 }
 
-                client.connect(options, null, object : IMqttActionListener {
+                val finalClientId = clientId ?: "cogwyrm_${System.currentTimeMillis()}"
+
+                mqttClient = MqttAsyncClient(
+                    serverUri,
+                    finalClientId,
+                    MemoryPersistence()
+                )
+
+                val options = MqttConnectOptions().apply {
+                    isCleanSession = true
+                    connectionTimeout = 30
+                    keepAliveInterval = 60
+                    if (username != null && password != null) {
+                        this.userName = username
+                        this.password = password.toCharArray()
+                    }
+                }
+
+                mqttClient?.connect(options, null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
-                        Log.d(TAG, "Connection successful")
-                        isRetrying = false
-                        retryAttempts.set(0)
-                        pendingReconnect = false
+                        _isConnected = true
                         continuation.resume(Unit)
                     }
 
                     override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                        Log.e(TAG, "Connection failed: ${exception?.message}")
-                        retryAttempts.incrementAndGet()
-                        isRetrying = false
-                        val error = exception ?: Exception("Connection failed")
+                        val error = exception ?: Exception("Failed to connect")
                         continuation.resumeWithException(error)
-                        reconnect()
                     }
                 })
-
-                continuation.invokeOnCancellation {
-                    try {
-                        if (client.isConnected) {
-                            client.disconnect()
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error during cancellation", e)
-                    }
-                }
             } catch (e: Exception) {
-                Log.e(TAG, "Connection error: ${e.message}")
                 continuation.resumeWithException(e)
-                if (!isRetrying) {
-                    reconnect()
-                }
+            }
+        }
+    }
+
+    suspend fun disconnect() = withContext(Dispatchers.IO) {
+        suspendCancellableCoroutine { continuation ->
+            try {
+                mqttClient?.disconnect(null, object : IMqttActionListener {
+                    override fun onSuccess(asyncActionToken: IMqttToken?) {
+                        _isConnected = false
+                        continuation.resume(Unit)
+                    }
+
+                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                        val error = exception ?: Exception("Failed to disconnect")
+                        continuation.resumeWithException(error)
+                    }
+                })
+            } catch (e: Exception) {
+                continuation.resumeWithException(e)
             }
         }
     }
@@ -170,24 +198,25 @@ class MQTTClient(
     ) = withContext(Dispatchers.IO) {
         suspendCancellableCoroutine { continuation ->
             try {
-                val mqttMessage = MqttMessage(message.toByteArray()).apply {
-                    this.qos = qos
-                    this.isRetained = retained
-                }
-                client.publish(topic, mqttMessage, null, object : IMqttActionListener {
-                    override fun onSuccess(asyncActionToken: IMqttToken?) {
-                        Log.d(TAG, "Message published successfully")
-                        continuation.resume(Unit)
-                    }
+                mqttClient?.publish(
+                    topic,
+                    MqttMessage(message.toByteArray()).apply {
+                        this.qos = qos
+                        isRetained = retained
+                    },
+                    null,
+                    object : IMqttActionListener {
+                        override fun onSuccess(asyncActionToken: IMqttToken?) {
+                            continuation.resume(Unit)
+                        }
 
-                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                        val error = exception ?: Exception("Failed to publish message")
-                        Log.e(TAG, "Publish error: ${error.message}")
-                        continuation.resumeWithException(error)
+                        override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                            val error = exception ?: Exception("Failed to publish message")
+                            continuation.resumeWithException(error)
+                        }
                     }
-                })
+                )
             } catch (e: Exception) {
-                Log.e(TAG, "Publish error: ${e.message}")
                 continuation.resumeWithException(e)
             }
         }
@@ -195,24 +224,33 @@ class MQTTClient(
 
     suspend fun subscribe(
         topic: String,
-        qos: Int = 1
+        qos: Int = 1,
+        callback: (String, String) -> Unit
     ) = withContext(Dispatchers.IO) {
         suspendCancellableCoroutine { continuation ->
             try {
-                client.subscribe(topic, qos, null, object : IMqttActionListener {
+                mqttClient?.subscribe(topic, qos, null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
-                        Log.d(TAG, "Subscribed successfully to: $topic")
+                        mqttClient?.setCallback(object : MqttCallback {
+                            override fun connectionLost(cause: Throwable?) {
+                                _isConnected = false
+                            }
+
+                            override fun messageArrived(topic: String, message: MqttMessage) {
+                                callback(topic, String(message.payload))
+                            }
+
+                            override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+                        })
                         continuation.resume(Unit)
                     }
 
                     override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                         val error = exception ?: Exception("Failed to subscribe")
-                        Log.e(TAG, "Subscribe error: ${error.message}")
                         continuation.resumeWithException(error)
                     }
                 })
             } catch (e: Exception) {
-                Log.e(TAG, "Subscribe error: ${e.message}")
                 continuation.resumeWithException(e)
             }
         }
@@ -221,52 +259,23 @@ class MQTTClient(
     suspend fun unsubscribe(topic: String) = withContext(Dispatchers.IO) {
         suspendCancellableCoroutine { continuation ->
             try {
-                client.unsubscribe(topic, null, object : IMqttActionListener {
+                mqttClient?.unsubscribe(topic, null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
-                        Log.d(TAG, "Unsubscribed successfully from: $topic")
                         continuation.resume(Unit)
                     }
 
                     override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                         val error = exception ?: Exception("Failed to unsubscribe")
-                        Log.e(TAG, "Unsubscribe error: ${error.message}")
                         continuation.resumeWithException(error)
                     }
                 })
             } catch (e: Exception) {
-                Log.e(TAG, "Unsubscribe error: ${e.message}")
                 continuation.resumeWithException(e)
             }
         }
     }
 
-    suspend fun disconnect() = withContext(Dispatchers.IO) {
-        try {
-            connectivityManager.unregisterNetworkCallback(networkCallback)
-            handler.removeCallbacksAndMessages(null)
-            if (client.isConnected) {
-                suspendCancellableCoroutine { continuation ->
-                    client.disconnect(null, object : IMqttActionListener {
-                        override fun onSuccess(asyncActionToken: IMqttToken?) {
-                            Log.d(TAG, "Disconnected successfully")
-                            continuation.resume(Unit)
-                        }
-
-                        override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                            val error = exception ?: Exception("Failed to disconnect")
-                            Log.e(TAG, "Disconnect error: ${error.message}")
-                            continuation.resumeWithException(error)
-                        }
-                    })
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Disconnect error: ${e.message}")
-            throw e
-        }
-    }
-
-    fun isConnected(): Boolean = client.isConnected
+    fun isConnected() = _isConnected
 
     companion object {
         private const val TAG = "MQTTClient"

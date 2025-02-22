@@ -18,4 +18,34 @@
     <string name="tasker_mqtt_publish_desc">Publish a message to an MQTT broker</string>
     <string name="tasker_mqtt_event_label">MQTT Event</string>
     <string name="tasker_mqtt_event_desc">Trigger when an MQTT message is received</string>
+
+    <!-- Error Messages -->
+    <string name="error_broker_url_required">Broker URL is required</string>
+    <string name="error_broker_url_invalid">Invalid broker URL format</string>
+    <string name="error_port_required">Port is required</string>
+    <string name="error_port_invalid">Port must be between 1 and 65535</string>
+    <string name="error_topic_required">Topic is required</string>
+    <string name="error_topic_invalid">Invalid topic format</string>
+    <string name="error_message_required">Message is required</string>
+    <string name="error_client_id_invalid">Invalid client ID format</string>
+    
+    <!-- Connection Error Messages -->
+    <string name="error_connection_failed">Failed to connect to MQTT broker</string>
+    <string name="error_connection_lost">Connection to MQTT broker lost</string>
+    <string name="error_publish_failed">Failed to publish message</string>
+    <string name="error_subscribe_failed">Failed to subscribe to topic</string>
+    <string name="error_ssl_failed">SSL/TLS connection failed</string>
+    <string name="error_auth_failed">Authentication failed</string>
+    
+    <!-- Generic Error Messages -->
+    <string name="error_unknown">An unknown error occurred</string>
+    <string name="error_network">Network error: %1$s</string>
+    <string name="error_configuration">Configuration error: %1$s</string>
+    <string name="error_validation">Validation error: %1$s</string>
+    
+    <!-- Dialog Messages -->
+    <string name="dialog_error_title">Error</string>
+    <string name="dialog_retry">Retry</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_ok">OK</string>
 </resources>
