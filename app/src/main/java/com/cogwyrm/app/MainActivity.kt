@@ -44,6 +44,11 @@ class MainActivity : AppCompatActivity() {
 
         mqttService = MQTTService(this)
 
+        // Set click listeners
+        connectButton.setOnClickListener { onConnectClick() }
+        publishButton.setOnClickListener { onPublishClick() }
+        subscribeButton.setOnClickListener { onSubscribeClick() }
+
         // Update UI based on connection state
         updateConnectionState()
     }
@@ -56,29 +61,36 @@ class MainActivity : AppCompatActivity() {
         statusText.text = if (isConnected) "Connected" else "Disconnected"
     }
 
-    fun onConnectClick(view: View) {
+    private fun onConnectClick() {
         if (mqttService.isConnected()) {
-            mqttService.disconnect()
-            updateConnectionState()
+            lifecycleScope.launch {
+                try {
+                    mqttService.disconnect()
+                    updateConnectionState()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Disconnect error", e)
+                    statusText.text = "Error: ${e.message}"
+                }
+            }
         } else {
             lifecycleScope.launch {
                 try {
                     mqttService.connect(
-                        brokerUrl = "tcp://${brokerUrlInput.text.toString()}",
+                        brokerUrl = brokerUrlInput.text.toString(),
                         port = portInput.text.toString().toInt(),
                         clientId = "cogwyrm_test_${System.currentTimeMillis()}",
                         useSsl = false
                     )
                     updateConnectionState()
                 } catch (e: Exception) {
-                    Log.e("MainActivity", "Connection error", e)
+                    Log.e(TAG, "Connection error", e)
                     statusText.text = "Error: ${e.message}"
                 }
             }
         }
     }
 
-    fun onPublishClick(view: View) {
+    private fun onPublishClick() {
         lifecycleScope.launch {
             try {
                 mqttService.publish(
@@ -87,25 +99,27 @@ class MainActivity : AppCompatActivity() {
                 )
                 statusText.text = "Message published"
             } catch (e: Exception) {
-                Log.e("MainActivity", "Publish error", e)
+                Log.e(TAG, "Publish error", e)
                 statusText.text = "Error: ${e.message}"
             }
         }
     }
 
-    fun onSubscribeClick(view: View) {
+    private fun onSubscribeClick() {
         lifecycleScope.launch {
             try {
                 mqttService.subscribe(
                     topic = topicInput.text.toString(),
                     qos = 1
                 ) { topic, message ->
-                    Log.d("MainActivity", "Received message on topic $topic: $message")
-                    statusText.text = "Last message: $topic - $message"
+                    Log.d(TAG, "Received message on topic $topic: $message")
+                    runOnUiThread {
+                        statusText.text = "Last message: $topic - $message"
+                    }
                 }
                 statusText.text = "Subscribed to topic"
             } catch (e: Exception) {
-                Log.e("MainActivity", "Subscribe error", e)
+                Log.e(TAG, "Subscribe error", e)
                 statusText.text = "Error: ${e.message}"
             }
         }
@@ -114,7 +128,11 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         lifecycleScope.launch {
-            mqttService.disconnect()
+            try {
+                mqttService.disconnect()
+            } catch (e: Exception) {
+                Log.e(TAG, "Disconnect error", e)
+            }
         }
     }
 
