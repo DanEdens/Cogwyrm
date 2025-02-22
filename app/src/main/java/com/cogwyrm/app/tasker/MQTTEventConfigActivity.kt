@@ -1,232 +1,51 @@
 package com.cogwyrm.app.tasker
 
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
-import android.util.Log
 import android.view.View
-import android.widget.ArrayAdapter
-import android.widget.AutoCompleteTextView
-import android.widget.EditText
-import androidx.appcompat.app.AlertDialog
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.cogwyrm.app.MQTTService
 import com.cogwyrm.app.R
-import com.cogwyrm.app.mqtt.MQTTClient
-import com.cogwyrm.app.mqtt.TopicUtils
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
-import org.eclipse.paho.client.mqttv3.IMqttActionListener
-import org.eclipse.paho.client.mqttv3.IMqttToken
+import kotlinx.coroutines.*
+import java.util.*
 
 class MQTTEventConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTEventInput> {
+    override val context get() = applicationContext
     private val helper by lazy { MQTTEventHelper(this) }
-    private var testClient: MQTTClient? = null
 
-    private lateinit var brokerUrlInput: EditText
-    private lateinit var portInput: EditText
-    private lateinit var clientIdInput: EditText
-    private lateinit var topicInput: EditText
-    private lateinit var topicInputLayout: TextInputLayout
+    private lateinit var brokerUrlLayout: TextInputLayout
+    private lateinit var brokerUrlInput: TextInputEditText
+    private lateinit var portLayout: TextInputLayout
+    private lateinit var portInput: TextInputEditText
+    private lateinit var clientIdLayout: TextInputLayout
+    private lateinit var clientIdInput: TextInputEditText
+    private lateinit var topicLayout: TextInputLayout
+    private lateinit var topicInput: TextInputEditText
+    private lateinit var qosSpinner: Spinner
     private lateinit var useSslSwitch: SwitchMaterial
-    private lateinit var usernameInput: EditText
-    private lateinit var passwordInput: EditText
-    private lateinit var qosSpinner: AutoCompleteTextView
+    private lateinit var usernameLayout: TextInputLayout
+    private lateinit var usernameInput: TextInputEditText
+    private lateinit var passwordLayout: TextInputLayout
+    private lateinit var passwordInput: TextInputEditText
+    private lateinit var testButton: Button
+    private lateinit var statusText: TextView
 
-    companion object {
-        private const val TAG = "MQTTEventConfig"
-        private val QOS_LEVELS = arrayOf(
-            "QoS 0 (At most once)",
-            "QoS 1 (At least once)",
-            "QoS 2 (Exactly once)"
-        )
-        private val QOS_DESCRIPTIONS = arrayOf(
-            "Fire and forget - Messages may be lost",
-            "Guaranteed delivery - Messages may be duplicated",
-            "Exactly once - Highest overhead, guaranteed single delivery"
-        )
-    }
+    private var testJob: Job? = null
+    private val scope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_mqtt_event_config)
 
-        // Initialize views
-        brokerUrlInput = findViewById(R.id.broker_url_input)
-        portInput = findViewById(R.id.port_input)
-        clientIdInput = findViewById(R.id.client_id_input)
-        topicInput = findViewById(R.id.topic_input)
-        topicInputLayout = findViewById(R.id.topic_input_layout)
-        useSslSwitch = findViewById(R.id.use_ssl_switch)
-        usernameInput = findViewById(R.id.username_input)
-        passwordInput = findViewById(R.id.password_input)
-        qosSpinner = findViewById(R.id.qos_spinner)
-
+        initializeViews()
+        setupListeners()
         setupQosSpinner()
-        setupTopicValidation()
         helper.onCreate()
-    }
-
-    private fun setupQosSpinner() {
-        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, QOS_LEVELS)
-        qosSpinner.setAdapter(adapter)
-        qosSpinner.setText(QOS_LEVELS[1], false) // Default to QoS 1
-    }
-
-    private fun setupTopicValidation() {
-        topicInput.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                validateTopic()
-            }
-        })
-    }
-
-    private fun validateTopic(): Boolean {
-        val topic = topicInput.text.toString()
-        return if (topic.isEmpty()) {
-            topicInputLayout.error = "Topic cannot be empty"
-            false
-        } else if (!TopicUtils.validateTopic(topic)) {
-            topicInputLayout.error = "Invalid topic format. Check wildcard usage."
-            false
-        } else {
-            topicInputLayout.error = null
-            true
-        }
-    }
-
-    fun onValidateTopic(@Suppress("UNUSED_PARAMETER") view: View) {
-        val topic = topicInput.text.toString()
-        if (topic.isEmpty()) {
-            showMessage("Please enter a topic pattern")
-            return
-        }
-
-        val isValid = TopicUtils.validateTopic(topic)
-        val message = if (isValid) {
-            "Topic pattern is valid!\n\nExample matches:\n" + generateExampleMatches(topic)
-        } else {
-            "Invalid topic pattern. Please check:\n" +
-                "- Single-level wildcard (+) can substitute for one topic level\n" +
-                "- Multi-level wildcard (#) must be the last character\n" +
-                "- Topic must not be empty\n" +
-                "- Topic must not contain invalid characters"
-        }
-
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Topic Validation")
-            .setMessage(message)
-            .setPositiveButton("OK", null)
-            .show()
-    }
-
-    private fun generateExampleMatches(pattern: String): String {
-        val examples = StringBuilder()
-        val parts = pattern.split("/")
-
-        // Generate a few example matches
-        repeat(3) { i ->
-            val example = parts.mapIndexed { index, part ->
-                when {
-                    part == "+" -> "value$i"
-                    part == "#" -> "level$i/sublevel$i"
-                    else -> part
-                }
-            }.joinToString("/")
-            examples.append("- $example\n")
-        }
-
-        return examples.toString()
-    }
-
-    fun onQosHelp(@Suppress("UNUSED_PARAMETER") view: View) {
-        val message = buildString {
-            append("Quality of Service Levels:\n\n")
-            QOS_LEVELS.forEachIndexed { index, level ->
-                append("$level\n")
-                append("${QOS_DESCRIPTIONS[index]}\n\n")
-            }
-        }
-
-        MaterialAlertDialogBuilder(this)
-            .setTitle("QoS Levels")
-            .setMessage(message)
-            .setPositiveButton("OK", null)
-            .show()
-    }
-
-    fun onTestConnection(@Suppress("UNUSED_PARAMETER") view: View) {
-        if (!validateConnectionInputs()) {
-            return
-        }
-
-        val brokerUrl = brokerUrlInput.text.toString()
-        val port = portInput.text.toString()
-        val clientId = clientIdInput.text.toString().takeIf { it.isNotEmpty() }
-            ?: "cogwyrm_test_${System.currentTimeMillis()}"
-
-        showMessage("Testing connection...")
-
-        testClient?.disconnect()
-        testClient = MQTTClient(
-            context = this,
-            brokerUrl = brokerUrl,
-            port = port,
-            clientId = clientId,
-            useSsl = useSslSwitch.isChecked,
-            onConnectionLost = { cause ->
-                Log.d(TAG, "Test connection lost: ${cause?.message}")
-            },
-            onMessageArrived = { _, _ -> },
-            onDeliveryComplete = { }
-        )
-
-        testClient?.connect(object : IMqttActionListener {
-            override fun onSuccess(asyncActionToken: IMqttToken?) {
-                runOnUiThread {
-                    showMessage("Connection successful!")
-                    testClient?.disconnect()
-                    testClient = null
-                }
-            }
-
-            override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                runOnUiThread {
-                    showMessage("Connection failed: ${exception?.message}")
-                    testClient = null
-                }
-            }
-        })
-    }
-
-    private fun validateConnectionInputs(): Boolean {
-        var isValid = true
-
-        if (brokerUrlInput.text.isEmpty()) {
-            brokerUrlInput.error = "Broker URL is required"
-            isValid = false
-        }
-
-        val port = portInput.text.toString().toIntOrNull()
-        if (port == null || port !in 1..65535) {
-            portInput.error = "Invalid port number"
-            isValid = false
-        }
-
-        return isValid
-    }
-
-    private fun showMessage(message: String) {
-        Snackbar.make(findViewById(android.R.id.content), message, Snackbar.LENGTH_LONG).show()
-    }
-
-    override fun onBackPressed() {
-        helper.finishForTasker()
     }
 
     override fun assignFromInput(input: TaskerInput<MQTTEventInput>) {
@@ -235,45 +54,156 @@ class MQTTEventConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTEven
             portInput.setText(port)
             clientIdInput.setText(clientId)
             topicInput.setText(topic)
+            qosSpinner.setSelection(qos)
             useSslSwitch.isChecked = useSsl
             usernameInput.setText(username)
             passwordInput.setText(password)
-            qosSpinner.setText(QOS_LEVELS[qos], false)
         }
     }
 
-    override val context get() = applicationContext
-
-    override fun getInput(): TaskerInput<MQTTEventInput> {
-        val qosLevel = QOS_LEVELS.indexOf(qosSpinner.text.toString()).takeIf { it != -1 } ?: 1
-
-        return TaskerInput(MQTTEventInput(
-            brokerUrl = brokerUrlInput.text.toString(),
-            port = portInput.text.toString(),
-            clientId = clientIdInput.text.toString().takeIf { it.isNotEmpty() },
-            topic = topicInput.text.toString(),
-            useSsl = useSslSwitch.isChecked,
-            username = usernameInput.text.toString().takeIf { it.isNotEmpty() },
-            password = passwordInput.text.toString().takeIf { it.isNotEmpty() },
-            qos = qosLevel
-        ))
+    private fun initializeViews() {
+        brokerUrlLayout = findViewById(R.id.brokerUrlLayout)
+        brokerUrlInput = findViewById(R.id.brokerUrlInput)
+        portLayout = findViewById(R.id.portLayout)
+        portInput = findViewById(R.id.portInput)
+        clientIdLayout = findViewById(R.id.clientIdLayout)
+        clientIdInput = findViewById(R.id.clientIdInput)
+        topicLayout = findViewById(R.id.topicLayout)
+        topicInput = findViewById(R.id.topicInput)
+        qosSpinner = findViewById(R.id.qosSpinner)
+        useSslSwitch = findViewById(R.id.useSslSwitch)
+        usernameLayout = findViewById(R.id.usernameLayout)
+        usernameInput = findViewById(R.id.usernameInput)
+        passwordLayout = findViewById(R.id.passwordLayout)
+        passwordInput = findViewById(R.id.passwordInput)
+        testButton = findViewById(R.id.testButton)
+        statusText = findViewById(R.id.statusText)
     }
 
-    fun onSave(@Suppress("UNUSED_PARAMETER") view: View) {
-        try {
-            if (!validateConnectionInputs() || !validateTopic()) {
-                return
+    private fun setupListeners() {
+        testButton.setOnClickListener {
+            if (validateInputs()) {
+                testConnection()
             }
-            helper.finishForTasker()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving MQTT event configuration", e)
-            showMessage("Error: ${e.message}")
+        }
+
+        useSslSwitch.setOnCheckedChangeListener { _, isChecked ->
+            portInput.setText(if (isChecked) "8883" else "1883")
+        }
+
+        clientIdInput.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && clientIdInput.text.isNullOrEmpty()) {
+                clientIdInput.setText("cogwyrm_${UUID.randomUUID()}")
+            }
+        }
+    }
+
+    private fun setupQosSpinner() {
+        ArrayAdapter.createFromResource(
+            this,
+            R.array.qos_levels,
+            android.R.layout.simple_spinner_item
+        ).also { adapter ->
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            qosSpinner.adapter = adapter
+        }
+    }
+
+    private fun validateInputs(): Boolean {
+        var isValid = true
+
+        if (brokerUrlInput.text.isNullOrBlank()) {
+            brokerUrlLayout.error = "Broker URL is required"
+            isValid = false
+        } else {
+            brokerUrlLayout.error = null
+        }
+
+        if (portInput.text.isNullOrBlank()) {
+            portLayout.error = "Port is required"
+            isValid = false
+        } else {
+            try {
+                val port = portInput.text.toString().toInt()
+                if (port !in 1..65535) {
+                    portLayout.error = "Port must be between 1 and 65535"
+                    isValid = false
+                } else {
+                    portLayout.error = null
+                }
+            } catch (e: NumberFormatException) {
+                portLayout.error = "Invalid port number"
+                isValid = false
+            }
+        }
+
+        if (topicInput.text.isNullOrBlank()) {
+            topicLayout.error = "Topic is required"
+            isValid = false
+        } else {
+            topicLayout.error = null
+        }
+
+        return isValid
+    }
+
+    private fun testConnection() {
+        testJob?.cancel()
+        testButton.isEnabled = false
+        statusText.text = "Testing connection..."
+
+        testJob = scope.launch {
+            try {
+                val service = MQTTService()
+                service.connect(
+                    serverUri = brokerUrlInput.text.toString(),
+                    port = portInput.text.toString().toInt(),
+                    clientId = clientIdInput.text?.toString(),
+                    useSsl = useSslSwitch.isChecked,
+                    username = usernameInput.text?.toString(),
+                    password = passwordInput.text?.toString()
+                )
+
+                delay(2000) // Wait for connection
+
+                if (service.isConnected()) {
+                    service.subscribe(
+                        topic = topicInput.text.toString(),
+                        qos = qosSpinner.selectedItemPosition
+                    )
+                    statusText.text = "Test successful! Subscribed to topic."
+                } else {
+                    statusText.text = "Connection failed"
+                }
+
+                service.disconnect()
+            } catch (e: Exception) {
+                statusText.text = "Error: ${e.message}"
+            } finally {
+                testButton.isEnabled = true
+            }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        testClient?.disconnect()
-        testClient = null
+        testJob?.cancel()
+        scope.cancel()
     }
+
+    override fun onBackPressed() {
+        helper.finishForTasker()
+    }
+
+    override val inputForTasker: TaskerInput<MQTTEventInput>
+        get() = TaskerInput(MQTTEventInput(
+            brokerUrl = brokerUrlInput.text.toString(),
+            port = portInput.text.toString(),
+            clientId = clientIdInput.text?.toString(),
+            topic = topicInput.text.toString(),
+            qos = qosSpinner.selectedItemPosition,
+            useSsl = useSslSwitch.isChecked,
+            username = usernameInput.text?.toString(),
+            password = passwordInput.text?.toString()
+        ))
 }

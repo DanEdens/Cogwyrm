@@ -132,21 +132,7 @@ class MQTTClient(
         }
 
         try {
-            client.connect(options, null, object : IMqttActionListener {
-                override fun onSuccess(asyncActionToken: IMqttToken?) {
-                    Log.d(TAG, "Connection successful")
-                    retryAttempts.set(0)
-                    callback?.onSuccess(asyncActionToken)
-                }
-
-                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                    Log.e(TAG, "Connection failed: ${exception?.message}")
-                    callback?.onFailure(asyncActionToken, exception)
-                    if (!isRetrying) {
-                        reconnect()
-                    }
-                }
-            })
+            client.connect(options, null, callback)
         } catch (e: Exception) {
             Log.e(TAG, "Connection error: ${e.message}")
             callback?.onFailure(null, e)
@@ -156,25 +142,43 @@ class MQTTClient(
         }
     }
 
-    fun publish(topic: String, message: String, qos: Int = 1, retained: Boolean = false) {
+    fun publish(
+        topic: String,
+        message: String,
+        qos: Int = 1,
+        retained: Boolean = false,
+        callback: IMqttActionListener? = null
+    ) {
         try {
             val mqttMessage = MqttMessage(message.toByteArray()).apply {
                 this.qos = qos
                 this.isRetained = retained
             }
-            client.publish(topic, mqttMessage)
+            client.publish(topic, mqttMessage, null, callback)
         } catch (e: Exception) {
             Log.e(TAG, "Publish error: ${e.message}")
-            throw e
+            callback?.onFailure(null, e)
         }
     }
 
-    fun subscribe(topic: String, qos: Int = 1, callback: IMqttActionListener? = null) {
+    fun subscribe(
+        topic: String,
+        qos: Int = 1,
+        callback: IMqttActionListener? = null
+    ) {
         try {
             client.subscribe(topic, qos, null, callback)
         } catch (e: Exception) {
             Log.e(TAG, "Subscribe error: ${e.message}")
-            throw e
+            callback?.onFailure(null, e)
+        }
+    }
+
+    fun unsubscribe(topic: String) {
+        try {
+            client.unsubscribe(topic)
+        } catch (e: Exception) {
+            Log.e(TAG, "Unsubscribe error: ${e.message}")
         }
     }
 

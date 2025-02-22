@@ -4,13 +4,32 @@ import com.joaomgcd.taskerpluginlibrary.input.TaskerInputField
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInputRoot
 
 @TaskerInputRoot
-class MQTTEventInput @JvmOverloads constructor(
-    @field:TaskerInputField("brokerUrl", label = "Broker URL") var brokerUrl: String = "",
-    @field:TaskerInputField("port", label = "Port") var port: String = "1883",
-    @field:TaskerInputField("clientId", label = "Client ID") var clientId: String? = null,
-    @field:TaskerInputField("topic", label = "Topic") var topic: String = "",
-    @field:TaskerInputField("useSsl", label = "Use SSL") var useSsl: Boolean = false,
-    @field:TaskerInputField("username", label = "Username") var username: String? = null,
-    @field:TaskerInputField("password", label = "Password") var password: String? = null,
-    @field:TaskerInputField("qos", label = "QoS Level") var qos: Int = 1
-)
+data class MQTTEventInput(
+    @TaskerInputField(key = "brokerUrl", labelResId = 0)
+    val brokerUrl: String,
+
+    @TaskerInputField(key = "port", labelResId = 0)
+    val port: String,
+
+    @TaskerInputField(key = "clientId", labelResId = 0)
+    val clientId: String?,
+
+    @TaskerInputField(key = "topic", labelResId = 0)
+    val topic: String,
+
+    @TaskerInputField(key = "qos", labelResId = 0)
+    val qos: Int,
+
+    @TaskerInputField(key = "useSsl", labelResId = 0)
+    val useSsl: Boolean,
+
+    @TaskerInputField(key = "username", labelResId = 0)
+    val username: String?,
+
+    @TaskerInputField(key = "password", labelResId = 0)
+    val password: String?
+) {
+    override fun toString(): String {
+        return "MQTTEventInput(brokerUrl='$brokerUrl', port='$port', clientId=$clientId, topic='$topic', qos=$qos, useSsl=$useSsl, username=$username, password=***)"
+    }
+}

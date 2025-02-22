@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Cogwyrm</string>
+    <string name="app_name">Cogwyrm MQTT</string>
     <string name="config_title">Cogwyrm MQTT Configuration</string>
     <string name="tasker_notification_title">MQTT Action</string>
     <string name="tasker_notification_text">Publishing message to MQTT broker</string>

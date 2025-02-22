@@ -161,5 +161,13 @@
             android:clipToPadding="false"
             android:padding="4dp" />
 
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginTop="16dp"
+            android:text="Not connected" />
+
     </LinearLayout>
 </ScrollView> 

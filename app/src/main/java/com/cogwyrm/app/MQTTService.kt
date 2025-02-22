@@ -11,12 +11,16 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.TaskStackBuilder
 import com.cogwyrm.app.mqtt.MQTTClient
+import kotlinx.coroutines.suspendCancellableCoroutine
 import org.eclipse.paho.client.mqttv3.*
 import org.json.JSONObject
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
-class MQTTService : Service() {
+open class MQTTService : Service() {
     private val binder = LocalBinder()
     private var mqttClient: MQTTClient? = null
     private var _isConnected = false
@@ -109,47 +113,59 @@ class MQTTService : Service() {
         notificationManager.notify(FOREGROUND_NOTIFICATION_ID, createForegroundNotification())
     }
 
-    fun isConnected(): Boolean = _isConnected
+    open fun isConnected(): Boolean = _isConnected
 
-    fun connect(serverUri: String, port: Int, clientId: String? = null, useSsl: Boolean = false,
-                username: String? = null, password: String? = null) {
-        val generatedClientId = clientId ?: "cogwyrm_${UUID.randomUUID()}"
+    open suspend fun connect(
+        serverUri: String,
+        port: Int,
+        clientId: String? = null,
+        useSsl: Boolean = false,
+        username: String? = null,
+        password: String? = null
+    ) = suspendCancellableCoroutine { continuation ->
+        try {
+            val generatedClientId = clientId ?: "cogwyrm_${UUID.randomUUID()}"
 
-        disconnect() // Clean up any existing connection
+            disconnect() // Clean up any existing connection
 
-        mqttClient = MQTTClient(
-            context = applicationContext,
-            brokerUrl = serverUri,
-            port = port.toString(),
-            clientId = generatedClientId,
-            useSsl = useSsl,
-            onConnectionLost = { cause ->
-                _isConnected = false
-                updateForegroundNotification()
-                showMessageNotification("Connection Lost", "MQTT connection was lost: ${cause?.message}")
-                Log.e(TAG, "Connection lost", cause)
-            },
-            onMessageArrived = { topic, message ->
-                handleIncomingMessage(topic, message)
-            }
-        ).apply {
-            connect(object : IMqttActionListener {
-                override fun onSuccess(asyncActionToken: IMqttToken?) {
-                    Log.d(TAG, "Connection success")
-                    _isConnected = true
-                    updateForegroundNotification()
-                    saveConnectionState(serverUri, port, generatedClientId, useSsl, username, password)
-                    restoreSubscriptions()
-                }
-
-                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                    Log.e(TAG, "Connection failure", exception)
+            mqttClient = MQTTClient(
+                context = applicationContext,
+                brokerUrl = serverUri,
+                port = port.toString(),
+                clientId = generatedClientId,
+                useSsl = useSsl,
+                onConnectionLost = { cause ->
                     _isConnected = false
                     updateForegroundNotification()
-                    showMessageNotification("Connection Failed",
-                        "Failed to connect to MQTT broker: ${exception?.message}")
+                    showMessageNotification("Connection Lost", "MQTT connection was lost: ${cause?.message}")
+                    Log.e(TAG, "Connection lost", cause)
+                },
+                onMessageArrived = { topic, message ->
+                    handleIncomingMessage(topic, message)
                 }
-            })
+            ).apply {
+                connect(object : IMqttActionListener {
+                    override fun onSuccess(asyncActionToken: IMqttToken?) {
+                        Log.d(TAG, "Connection success")
+                        _isConnected = true
+                        updateForegroundNotification()
+                        saveConnectionState(serverUri, port, generatedClientId, useSsl, username, password)
+                        restoreSubscriptions()
+                        continuation.resume(Unit)
+                    }
+
+                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                        Log.e(TAG, "Connection failure", exception)
+                        _isConnected = false
+                        updateForegroundNotification()
+                        showMessageNotification("Connection Failed",
+                            "Failed to connect to MQTT broker: ${exception?.message}")
+                        continuation.resumeWithException(exception ?: Exception("Connection failed"))
+                    }
+                })
+            }
+        } catch (e: Exception) {
+            continuation.resumeWithException(e)
         }
     }
 
@@ -177,34 +193,52 @@ class MQTTService : Service() {
         }
     }
 
-    fun publish(topic: String, message: String, qos: Int = 1, retained: Boolean = false) {
+    open suspend fun publish(
+        topic: String,
+        message: String,
+        qos: Int = 1,
+        retained: Boolean = false
+    ) = suspendCancellableCoroutine { continuation ->
         try {
-            mqttClient?.publish(topic, message, qos, retained)
-            messageHistory.add(MessageRecord(topic, message, qos, retained, isIncoming = false))
+            mqttClient?.publish(topic, message, qos, retained, object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    messageHistory.add(MessageRecord(topic, message, qos, retained, isIncoming = false))
+                    continuation.resume(Unit)
+                }
+
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                    Log.e(TAG, "Error publishing message", exception)
+                    showMessageNotification("Publish Failed", "Failed to publish message: ${exception?.message}")
+                    continuation.resumeWithException(exception ?: Exception("Publish failed"))
+                }
+            })
         } catch (e: Exception) {
-            Log.e(TAG, "Error publishing message", e)
-            showMessageNotification("Publish Failed", "Failed to publish message: ${e.message}")
+            continuation.resumeWithException(e)
         }
     }
 
-    fun subscribe(topic: String, qos: Int = 1) {
+    open suspend fun subscribe(
+        topic: String,
+        qos: Int = 1
+    ) = suspendCancellableCoroutine { continuation ->
         try {
             mqttClient?.subscribe(topic, qos, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     Log.d(TAG, "Successfully subscribed to: $topic")
                     activeSubscriptions[topic] = SubscriptionInfo(topic, qos)
                     saveSubscriptions()
+                    continuation.resume(Unit)
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                     Log.e(TAG, "Failed to subscribe to: $topic", exception)
                     showMessageNotification("Subscribe Failed",
                         "Failed to subscribe to topic: ${exception?.message}")
+                    continuation.resumeWithException(exception ?: Exception("Subscribe failed"))
                 }
             })
         } catch (e: Exception) {
-            Log.e(TAG, "Error subscribing", e)
-            showMessageNotification("Subscribe Failed", "Failed to subscribe to topic: ${e.message}")
+            continuation.resumeWithException(e)
         }
     }
 
@@ -233,8 +267,14 @@ class MQTTService : Service() {
         notificationManager.notify(MESSAGE_NOTIFICATION_ID, notification)
     }
 
-    private fun saveConnectionState(serverUri: String, port: Int, clientId: String,
-                                  useSsl: Boolean, username: String?, password: String?) {
+    private fun saveConnectionState(
+        serverUri: String,
+        port: Int,
+        clientId: String,
+        useSsl: Boolean,
+        username: String?,
+        password: String?
+    ) {
         val state = JSONObject().apply {
             put("serverUri", serverUri)
             put("port", port)

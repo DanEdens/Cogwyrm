@@ -7,34 +7,34 @@ import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigHelper
 
 @TaskerInputRoot
 data class MQTTActionInput(
-    @field:TaskerInputField("brokerUrl", "Broker URL", "The MQTT broker URL (e.g., mqtt.example.com)")
+    @TaskerInputField(key = "brokerUrl", labelResId = 0)
     val brokerUrl: String,
 
-    @field:TaskerInputField("port", "Port", "The MQTT broker port (default: 1883)")
+    @TaskerInputField(key = "port", labelResId = 0)
     val port: String,
 
-    @field:TaskerInputField("clientId", "Client ID", "Optional unique identifier for this client")
+    @TaskerInputField(key = "clientId", labelResId = 0)
     val clientId: String? = null,
 
-    @field:TaskerInputField("topic", "Topic", "The MQTT topic to publish to")
+    @TaskerInputField(key = "topic", labelResId = 0)
     val topic: String,
 
-    @field:TaskerInputField("message", "Message", "The message to publish")
+    @TaskerInputField(key = "message", labelResId = 0)
     val message: String,
 
-    @field:TaskerInputField("qos", "QoS Level", "Quality of Service level (0-2)")
+    @TaskerInputField(key = "qos", labelResId = 0)
     val qos: Int = 1,
 
-    @field:TaskerInputField("retained", "Retained", "Whether the message should be retained by the broker")
+    @TaskerInputField(key = "retained", labelResId = 0)
     val retained: Boolean = false,
 
-    @field:TaskerInputField("useSsl", "Use SSL/TLS", "Whether to use SSL/TLS encryption")
+    @TaskerInputField(key = "useSsl", labelResId = 0)
     val useSsl: Boolean = false,
 
-    @field:TaskerInputField("username", "Username", "Optional authentication username")
+    @TaskerInputField(key = "username", labelResId = 0)
     val username: String? = null,
 
-    @field:TaskerInputField("password", "Password", "Optional authentication password")
+    @TaskerInputField(key = "password", labelResId = 0)
     val password: String? = null
 ) {
     override fun toString(): String = "Send MQTT message to $topic@$brokerUrl"

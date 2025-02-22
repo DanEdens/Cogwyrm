@@ -1,4 +1,4 @@
-package com.cogwyrm.app.tasker
+https://tasker.joaoapps.com/pluginslibrary.htmlurpackage com.cogwyrm.app.tasker
 
 import android.content.Context
 import com.cogwyrm.app.MQTTService
@@ -7,15 +7,13 @@ import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultError
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSucess
-import kotlinx.coroutines.*
+import kotlinx.coroutines.runBlocking
 
 class MQTTActionRunner : TaskerPluginRunnerAction<MQTTActionInput, Unit>() {
     override fun run(context: Context, input: TaskerInput<MQTTActionInput>): TaskerPluginResult<Unit> {
-        return runBlocking {
-            try {
+        return try {
+            runBlocking {
                 val service = MQTTService()
-
-                // Connect to broker
                 service.connect(
                     serverUri = input.regular.brokerUrl,
                     port = input.regular.port.toInt(),
@@ -25,14 +23,10 @@ class MQTTActionRunner : TaskerPluginRunnerAction<MQTTActionInput, Unit>() {
                     password = input.regular.password
                 )
 
-                // Wait for connection
-                delay(2000)
-
                 if (!service.isConnected()) {
                     throw Exception("Failed to connect to MQTT broker")
                 }
 
-                // Publish message
                 service.publish(
                     topic = input.regular.topic,
                     message = input.regular.message,
@@ -40,16 +34,11 @@ class MQTTActionRunner : TaskerPluginRunnerAction<MQTTActionInput, Unit>() {
                     retained = input.regular.retained
                 )
 
-                // Wait for message to be published
-                delay(1000)
-
-                // Cleanup
                 service.disconnect()
-
-                TaskerPluginResultSucess(Unit)
-            } catch (e: Exception) {
-                TaskerPluginResultError(0, "Failed to publish message: ${e.message}")
+                TaskerPluginResultSucess()
             }
+        } catch (e: Exception) {
+            TaskerPluginResultError(0, e.message ?: "Unknown error")
         }
     }
 }

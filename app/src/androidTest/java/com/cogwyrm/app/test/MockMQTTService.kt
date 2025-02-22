@@ -11,8 +11,10 @@ class MockMQTTService : MQTTService() {
     private val isConnected = AtomicBoolean(false)
     private val shouldFailConnection = AtomicBoolean(false)
     private val shouldFailPublish = AtomicBoolean(false)
+    private val shouldFailSubscribe = AtomicBoolean(false)
     private val connectionDelay = 500L
     private val publishDelay = 200L
+    private val subscribeDelay = 200L
 
     var lastTopic: String? = null
         private set
@@ -22,6 +24,16 @@ class MockMQTTService : MQTTService() {
         private set
     var lastRetained: Boolean? = null
         private set
+    var lastSubscribedTopic: String? = null
+        private set
+    var lastSubscribedQos: Int? = null
+        private set
+    var lastUseSsl: Boolean? = null
+        private set
+    var lastUsername: String? = null
+        private set
+    var lastPassword: String? = null
+        private set
 
     fun setConnectionShouldFail(shouldFail: Boolean) {
         shouldFailConnection.set(shouldFail)
@@ -29,6 +41,10 @@ class MockMQTTService : MQTTService() {
 
     fun setPublishShouldFail(shouldFail: Boolean) {
         shouldFailPublish.set(shouldFail)
+    }
+
+    fun setSubscribeShouldFail(shouldFail: Boolean) {
+        shouldFailSubscribe.set(shouldFail)
     }
 
     override fun isConnected(): Boolean = isConnected.get()
@@ -45,6 +61,9 @@ class MockMQTTService : MQTTService() {
         if (shouldFailConnection.get()) {
             throw Exception("Mock connection failure")
         }
+        lastUseSsl = useSsl
+        lastUsername = username
+        lastPassword = password
         isConnected.set(true)
     }
 
@@ -67,11 +86,31 @@ class MockMQTTService : MQTTService() {
         lastRetained = retained
     }
 
+    override suspend fun subscribe(
+        topic: String,
+        qos: Int
+    ) {
+        if (!isConnected.get()) {
+            throw Exception("Not connected")
+        }
+        if (shouldFailSubscribe.get()) {
+            throw Exception("Mock subscribe failure")
+        }
+        delay(subscribeDelay)
+        lastSubscribedTopic = topic
+        lastSubscribedQos = qos
+    }
+
     override fun disconnect() {
         isConnected.set(false)
         lastTopic = null
         lastMessage = null
         lastQos = null
         lastRetained = null
+        lastSubscribedTopic = null
+        lastSubscribedQos = null
+        lastUseSsl = null
+        lastUsername = null
+        lastPassword = null
     }
 }

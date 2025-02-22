@@ -11,13 +11,12 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
-import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginRunner
 import kotlinx.coroutines.*
 import java.util.*
 
 class MQTTConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTActionInput> {
     override val context get() = applicationContext
-    override val runner: TaskerPluginRunner<MQTTActionInput> = MQTTActionRunner()
+    private val helper by lazy { MQTTActionHelper(this) }
 
     private lateinit var brokerUrlLayout: TextInputLayout
     private lateinit var brokerUrlInput: TextInputEditText
@@ -49,9 +48,11 @@ class MQTTConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTActionInp
         initializeViews()
         setupListeners()
         setupQosSpinner()
+        helper.onCreate()
+    }
 
-        // Restore previous values if editing
-        taskerInput?.regular?.run {
+    override fun assignFromInput(input: TaskerInput<MQTTActionInput>) {
+        input.regular.run {
             brokerUrlInput.setText(brokerUrl)
             portInput.setText(port)
             clientIdInput.setText(clientId)
@@ -205,6 +206,10 @@ class MQTTConfigActivity : AppCompatActivity(), TaskerPluginConfig<MQTTActionInp
         super.onDestroy()
         testJob?.cancel()
         scope.cancel()
+    }
+
+    override fun onBackPressed() {
+        helper.finishForTasker()
     }
 
     override val inputForTasker: TaskerInput<MQTTActionInput>

@@ -17,44 +17,13 @@ import org.eclipse.paho.client.mqttv3.IMqttToken
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-class MQTTEventRunner : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput, MQTTEventUpdate>() {
-    override fun getSatisfiedCondition(
-        context: Context,
-        input: TaskerInput<MQTTEventInput>,
-        update: MQTTEventUpdate?
-    ): TaskerPluginResultCondition<MQTTEventOutput> {
-        // If no update or topic doesn't match pattern, condition not satisfied
-        if (update == null || !TopicUtils.topicMatchesPattern(input.regular.topic, update.topic)) {
-            return TaskerPluginResultConditionUnsatisfied()
-        }
-
-        val eventOutput = MQTTEventOutput(
-            topic = update.topic,
-            message = update.message,
-            qos = update.qos,
-            retained = update.retained,
-            timestamp = update.timestamp
-        )
-        return TaskerPluginResultConditionSatisfied(context, eventOutput)
-    }
-}
-
-class MQTTEventHelper(config: TaskerPluginConfig<MQTTEventInput>) : TaskerPluginConfigHelper<MQTTEventInput, MQTTEventOutput, MQTTEventUpdate>(config) {
+class MQTTEventHelper(config: TaskerPluginConfig<MQTTEventInput>) : TaskerPluginConfigHelper<MQTTEventInput, MQTTEventOutput, MQTTEventRunner>(config) {
     override val runnerClass = MQTTEventRunner::class.java
     override val inputClass = MQTTEventInput::class.java
     override val outputClass = MQTTEventOutput::class.java
 }
 
-// This class represents an update from MQTT that will trigger the event
-data class MQTTEventUpdate(
-    val topic: String,
-    val message: String,
-    val qos: Int,
-    val retained: Boolean,
-    val timestamp: Long = System.currentTimeMillis()
-)
-
-class MQTTEventReceiver : MQTTEventHelper.ReceiverCondition() {
+class MQTTEventReceiver : TaskerPluginRunnerConditionEvent<MQTTEventInput, MQTTEventOutput, MQTTEventOutput>() {
     companion object {
         private const val TAG = "MQTTEventReceiver"
         private val activeSubscriptions = ConcurrentHashMap<String, MQTTSubscription>()
@@ -70,19 +39,33 @@ class MQTTEventReceiver : MQTTEventHelper.ReceiverCondition() {
             Log.d(TAG, "Received MQTT message on topic: $topic")
 
             // Create update object
-            val update = MQTTEventUpdate(
+            val update = MQTTEventOutput(
                 topic = topic,
                 message = message,
                 qos = qos,
-                retained = retained
+                retained = retained,
+                timestamp = System.currentTimeMillis()
             )
 
             // Notify Tasker about the event
-            TaskerPluginRunnerConditionEvent.requestQuery(MQTTEventRunner::class.java, update)
+            requestQuery(MQTTEventReceiver::class.java, update)
         }
     }
 
-    override fun addCondition(context: Context, input: TaskerInput<MQTTEventInput>, update: MQTTEventUpdate?) {
+    override fun getSatisfiedCondition(
+        context: Context,
+        input: TaskerInput<MQTTEventInput>,
+        update: TaskerInput<MQTTEventOutput>?
+    ): TaskerPluginResultCondition<MQTTEventOutput> {
+        // If no update or topic doesn't match pattern, condition not satisfied
+        if (update?.regular == null || !TopicUtils.topicMatchesPattern(input.regular.topic, update.regular.topic)) {
+            return TaskerPluginResultConditionUnsatisfied()
+        }
+
+        return TaskerPluginResultConditionSatisfied(context, update.regular)
+    }
+
+    override fun addCondition(context: Context, input: TaskerInput<MQTTEventInput>) {
         val mqttInput = input.regular
 
         // Validate topic pattern
@@ -165,7 +148,7 @@ class MQTTEventReceiver : MQTTEventHelper.ReceiverCondition() {
         }
     }
 
-    override fun removeCondition(context: Context, input: TaskerInput<MQTTEventInput>, update: MQTTEventUpdate?) {
+    override fun removeCondition(context: Context, input: TaskerInput<MQTTEventInput>) {
         val mqttInput = input.regular
         val subscriptionKey = "${mqttInput.brokerUrl}:${mqttInput.port}:${mqttInput.clientId}"
 
