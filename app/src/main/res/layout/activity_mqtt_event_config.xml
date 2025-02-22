@@ -10,11 +10,20 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- Connection Settings -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connection Settings"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginBottom="8dp"/>
+
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/brokerUrlLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Broker URL">
+            android:hint="Broker URL"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/brokerUrlInput"
@@ -28,7 +37,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="Port">
+            android:hint="Port"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/portInput"
@@ -49,7 +59,8 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:hint="Client ID">
+                android:hint="Client ID"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/clientIdInput"
@@ -57,7 +68,7 @@
                     android:layout_height="wrap_content" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/generateClientIdButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -65,12 +76,21 @@
                 android:text="Generate" />
         </LinearLayout>
 
+        <!-- Topic Settings -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Topic Settings"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/topicLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="Topic">
+            android:hint="Topic"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/topicInput"
@@ -83,7 +103,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="QoS">
+            android:hint="QoS Level"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/qosInput"
@@ -93,11 +114,67 @@
                 android:text="0" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Connection Options -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connection Options"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
         <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/sslSwitch"
+            android:id="@+id/cleanSessionSwitch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:text="Clean Session"
+            android:checked="true"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/keepAliveLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Keep Alive (seconds)"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/keepAliveInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:text="60" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/connectionTimeoutLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Connection Timeout (seconds)"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/connectionTimeoutInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:text="30" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Security Settings -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Security Settings"
+            android:textAppearance="?attr/textAppearanceHeadline6"
             android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/useSslSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:text="Use SSL/TLS" />
 
         <com.google.android.material.textfield.TextInputLayout
@@ -105,7 +182,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="Username (Optional)">
+            android:hint="Username (Optional)"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/usernameInput"
@@ -119,7 +197,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:hint="Password (Optional)"
-            app:endIconMode="password_toggle">
+            app:endIconMode="password_toggle"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/passwordInput"
@@ -127,6 +206,54 @@
                 android:layout_height="wrap_content"
                 android:inputType="textPassword" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Reconnection Settings -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Reconnection Settings"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/autoReconnectSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Auto Reconnect"
+            android:checked="true"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/maxReconnectDelayLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Max Reconnect Delay (seconds)"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/maxReconnectDelayInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:text="128" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Test Connection -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/testConnectionButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Test Connection" />
+
+        <TextView
+            android:id="@+id/connectionStatusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:textAppearance="?attr/textAppearanceBody1"/>
 
     </LinearLayout>
 </ScrollView> 
