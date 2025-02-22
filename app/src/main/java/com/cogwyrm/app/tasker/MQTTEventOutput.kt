@@ -1,26 +1,27 @@
 package com.cogwyrm.app.tasker
 
-import com.joaomgcd.taskerpluginlibrary.output.TaskerOutputObject
-import com.joaomgcd.taskerpluginlibrary.output.TaskerOutputVariable
+import android.os.Bundle
 
-@TaskerOutputObject
 data class MQTTEventOutput(
-    @get:TaskerOutputVariable("topic", labelResId = 0, htmlLabelResId = 0)
     val topic: String,
-
-    @get:TaskerOutputVariable("message", labelResId = 0, htmlLabelResId = 0)
     val message: String,
+    val timestamp: Long = System.currentTimeMillis()
+) : TaskerPluginOutput {
+    override fun toBundle(): Bundle {
+        return Bundle().apply {
+            putString("topic", topic)
+            putString("message", message)
+            putLong("timestamp", timestamp)
+        }
+    }
 
-    @get:TaskerOutputVariable("qos", labelResId = 0, htmlLabelResId = 0)
-    val qos: Int,
-
-    @get:TaskerOutputVariable("retained", labelResId = 0, htmlLabelResId = 0)
-    val retained: Boolean,
-
-    @get:TaskerOutputVariable("timestamp", labelResId = 0, htmlLabelResId = 0)
-    val timestamp: Long
-) {
-    override fun toString(): String {
-        return "MQTTEventOutput(topic='$topic', message='$message', qos=$qos, retained=$retained, timestamp=$timestamp)"
+    companion object {
+        fun fromBundle(bundle: Bundle): MQTTEventOutput {
+            return MQTTEventOutput(
+                topic = bundle.getString("topic", ""),
+                message = bundle.getString("message", ""),
+                timestamp = bundle.getLong("timestamp", System.currentTimeMillis())
+            )
+        }
     }
 }

@@ -1,35 +1,46 @@
 package com.cogwyrm.app.tasker
 
-import com.joaomgcd.taskerpluginlibrary.input.TaskerInputField
-import com.joaomgcd.taskerpluginlibrary.input.TaskerInputRoot
+import android.os.Bundle
 
-@TaskerInputRoot
 data class MQTTEventInput(
-    @TaskerInputField(key = "brokerUrl", labelResId = 0)
     val brokerUrl: String,
-
-    @TaskerInputField(key = "port", labelResId = 0)
-    val port: String,
-
-    @TaskerInputField(key = "clientId", labelResId = 0)
+    val port: Int,
     val clientId: String?,
-
-    @TaskerInputField(key = "topic", labelResId = 0)
     val topic: String,
-
-    @TaskerInputField(key = "qos", labelResId = 0)
     val qos: Int,
-
-    @TaskerInputField(key = "useSsl", labelResId = 0)
     val useSsl: Boolean,
-
-    @TaskerInputField(key = "username", labelResId = 0)
     val username: String?,
-
-    @TaskerInputField(key = "password", labelResId = 0)
     val password: String?
-) {
-    override fun toString(): String {
-        return "MQTTEventInput(brokerUrl='$brokerUrl', port='$port', clientId=$clientId, topic='$topic', qos=$qos, useSsl=$useSsl, username=$username, password=***)"
+) : TaskerPluginInput {
+    override fun validate(): Boolean {
+        return brokerUrl.isNotBlank() && port > 0 && topic.isNotBlank()
+    }
+
+    companion object {
+        fun fromBundle(bundle: Bundle): MQTTEventInput {
+            return MQTTEventInput(
+                brokerUrl = bundle.getString("brokerUrl", ""),
+                port = bundle.getInt("port", 1883),
+                clientId = bundle.getString("clientId"),
+                topic = bundle.getString("topic", ""),
+                qos = bundle.getInt("qos", 0),
+                useSsl = bundle.getBoolean("useSsl", false),
+                username = bundle.getString("username"),
+                password = bundle.getString("password")
+            )
+        }
+    }
+
+    fun toBundle(): Bundle {
+        return Bundle().apply {
+            putString("brokerUrl", brokerUrl)
+            putInt("port", port)
+            putString("clientId", clientId)
+            putString("topic", topic)
+            putInt("qos", qos)
+            putBoolean("useSsl", useSsl)
+            putString("username", username)
+            putString("password", password)
+        }
     }
 }
