@@ -37,3 +37,4 @@ local.properties
 
 # Keystore files
 *.jks
+/.specstory
