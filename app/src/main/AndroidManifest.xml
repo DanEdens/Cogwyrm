@@ -58,7 +58,8 @@
             android:exported="true"
             android:icon="@drawable/ic_mqtt_publish"
             android:label="@string/tasker_mqtt_publish_label"
-            android:description="@string/tasker_mqtt_publish_desc">
+            android:theme="@style/Theme.Cogwyrm"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
@@ -83,7 +84,8 @@
             android:exported="true"
             android:icon="@drawable/ic_mqtt_event"
             android:label="@string/tasker_mqtt_event_label"
-            android:description="@string/tasker_mqtt_event_desc">
+            android:theme="@style/Theme.Cogwyrm"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_CONDITION" />
             </intent-filter>

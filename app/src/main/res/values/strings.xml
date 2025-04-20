@@ -15,9 +15,9 @@
 
     <!-- Tasker Plugin Labels -->
     <string name="tasker_mqtt_publish_label">MQTT Publish</string>
-    <string name="tasker_mqtt_publish_desc">Publish a message to an MQTT broker</string>
-    <string name="tasker_mqtt_event_label">MQTT Event</string>
-    <string name="tasker_mqtt_event_desc">Trigger when an MQTT message is received</string>
+    <string name="tasker_mqtt_publish_desc">Publish a message to an MQTT topic</string>
+    <string name="tasker_mqtt_event_label">MQTT Message</string>
+    <string name="tasker_mqtt_event_desc">Triggers when a message is received on an MQTT topic</string>
 
     <!-- Field Labels -->
     <string name="broker_url">Broker URL</string>
@@ -35,17 +35,25 @@
     <string name="auto_reconnect">Auto Reconnect</string>
     <string name="max_reconnect_delay">Max Reconnect Delay (seconds)</string>
 
+    <!-- MQTT Client Strings -->
+    <string name="mqtt_connection_success">Successfully connected to MQTT broker</string>
+    <string name="mqtt_connection_failed">Failed to connect to MQTT broker: %1$s</string>
+    <string name="mqtt_publish_success">Successfully published message to topic %1$s</string>
+    <string name="mqtt_publish_failed">Failed to publish message: %1$s</string>
+    <string name="mqtt_subscription_success">Successfully subscribed to topic %1$s</string>
+    <string name="mqtt_subscription_failed">Failed to subscribe to topic: %1$s</string>
+    <string name="mqtt_disconnected">Disconnected from MQTT broker</string>
+
     <!-- Error Messages -->
-    <string name="error_invalid_broker_url">Invalid broker URL</string>
-    <string name="error_invalid_port">Port must be between 1 and 65535</string>
+    <string name="error_invalid_broker_url">Please enter a valid broker URL</string>
+    <string name="error_invalid_port">Please enter a valid port number (1-65535)</string>
+    <string name="error_empty_topic">Topic cannot be empty</string>
+    <string name="error_empty_payload">Message payload cannot be empty</string>
+    <string name="error_invalid_qos">QoS level must be between 0 and 2</string>
+    <string name="error_connection_failed">Connection failed</string>
     <string name="error_invalid_topic">Invalid topic</string>
-    <string name="error_invalid_qos">QoS must be between 0 and 2</string>
     <string name="error_invalid_input">Invalid input configuration</string>
     <string name="error_invalid_client_id">Invalid client ID format</string>
-    <string name="error_connection_failed">Failed to connect to MQTT broker</string>
-    <string name="error_connection_lost">Connection to MQTT broker lost</string>
-    <string name="error_publish_failed">Failed to publish message</string>
-    <string name="error_subscribe_failed">Failed to subscribe to topic</string>
     <string name="error_ssl_failed">SSL/TLS connection failed</string>
     <string name="error_auth_failed">Authentication failed</string>
     <string name="error_unknown">An unknown error occurred</string>

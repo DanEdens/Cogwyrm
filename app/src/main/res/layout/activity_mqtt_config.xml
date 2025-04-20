@@ -50,19 +50,34 @@
                 android:text="1883"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/clientIdLayout"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:hint="Client ID (optional)"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+            android:orientation="horizontal">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/clientIdInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
-        </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/clientIdLayout"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:layout_marginEnd="8dp"
+                android:hint="Client ID"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/clientIdInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/generateClientIdButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:text="Generate"/>
+        </LinearLayout>
 
         <!-- Message Settings -->
         <TextView
@@ -92,7 +107,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:hint="Message"
+            android:hint="Message Payload"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -100,35 +115,27 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="textMultiLine"
-                android:minLines="3"/>
+                android:gravity="top"
+                android:minLines="4"
+                android:maxLines="8"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <LinearLayout
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/qosLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
+            android:layout_marginBottom="8dp"
+            android:hint="QoS Level (0-2)"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/qosInput"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="QoS Level"
-                android:layout_gravity="center_vertical"
-                android:layout_marginEnd="16dp"/>
-
-            <Spinner
-                android:id="@+id/qosSpinner"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"/>
-        </LinearLayout>
-
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/retainedSwitch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Retain Message"
-            android:layout_marginBottom="8dp"/>
+                android:inputType="number"
+                android:maxLength="1"
+                android:text="0"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Security Settings -->
         <TextView
@@ -143,15 +150,15 @@
             android:id="@+id/useSslSwitch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Use SSL/TLS"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginBottom="8dp"
+            android:text="Use SSL/TLS"/>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/usernameLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:hint="Username (optional)"
+            android:hint="Username (Optional)"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -165,7 +172,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:hint="Password (optional)"
+            android:hint="Password (Optional)"
             app:endIconMode="password_toggle"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -176,20 +183,35 @@
                 android:inputType="textPassword"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Test Connection -->
+        <!-- Action Buttons -->
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/testButton"
+            android:id="@+id/testConnectionButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Test Connection"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginBottom="16dp"
+            android:text="Test Connection"/>
 
-        <TextView
-            android:id="@+id/statusText"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textAppearance="?attr/textAppearanceBody1"/>
+            android:orientation="horizontal">
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/cancelButton"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="Cancel"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saveButton"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Save"/>
+        </LinearLayout>
     </LinearLayout>
 </ScrollView> 
