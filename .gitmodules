@@ -1,3 +1,6 @@
 [submodule "taskersample"]
 	path = taskersample
 	url = https://github.com/joaomgcd/TaskerPluginSample.git
+[submodule "examples/MQTTSubscriber"]
+	path = examples/MQTTSubscriber
+	url = https://github.com/adumont/MQTTSubscriber.git
